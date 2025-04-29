@@ -1,0 +1,41 @@
+/* Last reviewed: 2025-04-29 07:31:24 UTC (User: TeeksssLogin) */
+.spinner-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner {
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: #3498db;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s ease infinite;
+}
+
+.spinner-small {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.spinner-large {
+  width: 36px;
+  height: 36px;
+  border-width: 4px;
+}
+
+.spinner-light {
+  border-color: rgba(255, 255, 255, 0.2);
+  border-top-color: #ffffff;
+}
+
+.spinner-text {
+  margin-left: 10px;
+  font-size: 0.9em;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

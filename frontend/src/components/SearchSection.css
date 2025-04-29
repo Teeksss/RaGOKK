@@ -1,0 +1,23 @@
+/* Last reviewed: 2025-04-29 07:31:24 UTC (User: TeeksssLogin) */
+.search-section {
+  margin-bottom: 25px;
+}
+
+.search-loading {
+  display: flex;
+  justify-content: center;
+  padding: 30px 0;
+}
+
+.search-error {
+  margin-top: 15px;
+}
+
+.login-required-message {
+  background-color: #f8f9fa;
+  padding: 20px;
+  text-align: center;
+  border-radius: 4px;
+  margin: 20px 0;
+  color: #6c757d;
+}

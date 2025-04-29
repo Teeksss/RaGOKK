@@ -1,0 +1,106 @@
+/* Admin Menu Styles - Last reviewed: 2025-04-29 10:34:18 UTC (User: Teekssseksikleri) */
+.admin-menu {
+  position: relative;
+}
+
+.admin-menu-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: #333;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 10px;
+}
+
+.admin-menu-toggle:hover {
+  color: #4a90e2;
+}
+
+.admin-menu-toggle.open {
+  color: #4a90e2;
+}
+
+.dropdown-arrow {
+  font-size: 10px;
+  margin-left: 3px;
+}
+
+.admin-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  min-width: 180px;
+  z-index: 100;
+  list-style: none;
+  padding: 0;
+}
+
+.admin-dropdown li {
+  margin: 0;
+}
+
+.admin-dropdown a {
+  display: block;
+  padding: 10px 15px;
+  color: #333;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.admin-dropdown a:hover {
+  background-color: #f5f5f5;
+  color: #4a90e2;
+}
+
+.admin-dropdown a.active {
+  background-color: #e6f7ff;
+  color: #4a90e2;
+}
+
+.admin-badge {
+  display: inline-block;
+  background-color: #ff4d4f;
+  color: white;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 10px;
+  margin-left: 5px;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .admin-menu-toggle {
+    color: #e0e0e0;
+  }
+  
+  .admin-dropdown {
+    background-color: #333;
+  }
+  
+  .admin-dropdown a {
+    color: #e0e0e0;
+  }
+  
+  .admin-dropdown a:hover {
+    background-color: #444;
+  }
+  
+  .admin-dropdown a.active {
+    background-color: #1a4676;
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .admin-dropdown {
+    position: static;
+    box-shadow: none;
+    margin-left: 20px;
+  }
+}

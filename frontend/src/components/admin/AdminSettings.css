@@ -1,0 +1,80 @@
+/* Last reviewed: 2025-04-29 11:06:31 UTC (User: Teekssseksiklikleri) */
+.admin-settings {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.admin-settings h2 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #ddd;
+}
+
+.admin-tab {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 15px;
+  color: #555;
+  position: relative;
+  transition: all 0.3s;
+}
+
+.admin-tab:hover {
+  color: #4a90e2;
+}
+
+.admin-tab.active {
+  color: #4a90e2;
+  font-weight: 500;
+}
+
+.admin-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #4a90e2;
+}
+
+.admin-content {
+  min-height: 400px;
+}
+
+.no-access {
+  padding: 50px;
+  text-align: center;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  color: #555;
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  .admin-settings h2 {
+    color: #e0e0e0;
+  }
+  
+  .admin-tabs {
+    border-bottom-color: #444;
+  }
+  
+  .admin-tab {
+    color: #bbb;
+  }
+  
+  .no-access {
+    background-color: #2a2a2a;
+    color: #ddd;
+  }
+}

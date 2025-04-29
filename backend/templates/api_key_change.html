@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            padding: 20px;
+            background-color: #4a90e2;
+            color: white;
+        }
+        .content {
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-top: none;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 12px;
+            color: #777777;
+            border-top: 1px solid #e0e0e0;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .provider-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #e3f2fd;
+            color: #0d47a1;
+            border-radius: 15px;
+            margin-bottom: 10px;
+        }
+        .action-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            margin-bottom: 10px;
+        }
+        .action-create {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .action-update {
+            background-color: #fff8e1;
+            color: #ff8f00;
+        }
+        .action-delete {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .detail-item {
+            margin-bottom: 8px;
+        }
+        .detail-label {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #4a90e2;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            text-align: center;
+            margin-top: 15px;
+        }
+        .button:hover {
+            background-color: #3a80d2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>API Anahtarı İşlemi</h1>
+        </div>
+        
+        <div class="content">
+            <span class="provider-badge">{{ provider }}</span>
+            
+            {% if action == "oluşturuldu" %}
+                <span class="action-badge action-create">{{ action|title }}</span>
+            {% elif action == "güncellendi" %}
+                <span class="action-badge action-update">{{ action|title }}</span>
+            {% elif action == "silindi" %}
+                <span class="action-badge action-delete">{{ action|title }}</span>
+            {% endif %}
+            
+            <p>API anahtarı <strong>{{ provider }}</strong> için <strong>{{ action }}</strong> işlemi yapıldı.</p>
+            
+            <div class="info-box">
+                <div class="detail-item">
+                    <span class="detail-label">İşlem:</span> {{ action|title }}
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Sağlayıcı:</span> {{ provider }}
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Değişiklik yapan:</span> {{ changed_by }}
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Tarih:</span> {{ details.timestamp if details and details.timestamp else now() }}
+                </div>
+            </div>
+            
+            {% if details_html %}
+                <div class="details-section">
+                    {{ details_html|safe }}
+                </div>
+            {% endif %}
+            
+            <a href="{{ system_url|default('#') }}/api-keys/monitor" class="button">API Anahtar Monitörünü Görüntüle</a>
+        </div>
+        
+        <div class="footer">
+            <p>Bu e-posta otomatik olarak oluşturulmuştur. Lütfen yanıtlamayınız.</p>
+            <p>&copy; {{ now().year }} RAG Base. Tüm hakları saklıdır.</p>
+        </div>
+    </div>
+</body>
+</html>

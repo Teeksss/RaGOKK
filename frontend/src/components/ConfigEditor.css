@@ -1,0 +1,284 @@
+/* Last reviewed: 2025-04-29 11:06:31 UTC (User: Teekssseksiklikleri) */
+
+.config-editor {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.config-editor h2 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.config-editor-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.category-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  border-bottom: 1px solid #ddd;
+  width: 100%;
+}
+
+.category-tab {
+  padding: 10px 15px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #555;
+  position: relative;
+  transition: all 0.3s;
+}
+
+.category-tab:hover {
+  color: #4a90e2;
+}
+
+.category-tab.active {
+  color: #4a90e2;
+  font-weight: 500;
+}
+
+.category-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #4a90e2;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.edit-button, .save-button, .cancel-button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+}
+
+.edit-button {
+  background-color: #4a90e2;
+  color: white;
+}
+
+.save-button {
+  background-color: #4caf50;
+  color: white;
+}
+
+.cancel-button {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.edit-button:hover {
+  background-color: #3a80d2;
+}
+
+.save-button:hover {
+  background-color: #43a047;
+}
+
+.cancel-button:hover {
+  background-color: #e0e0e0;
+}
+
+.save-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.config-list {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.category-title {
+  font-size: 16px;
+  font-weight: bold;
+  padding: 15px;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.config-item {
+  display: flex;
+  padding: 15px;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.config-item:last-child {
+  border-bottom: none;
+}
+
+.config-info {
+  flex: 3;
+  padding-right: 20px;
+}
+
+.config-key {
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: #333;
+}
+
+.config-description {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+}
+
+.config-value {
+  flex: 1;
+  min-width: 200px;
+}
+
+.config-input, .config-select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.config-input:focus, .config-select:focus {
+  border-color: #4a90e2;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+}
+
+.config-input:disabled, .config-select:disabled {
+  background-color: #f9f9f9;
+  cursor: not-allowed;
+}
+
+.no-items {
+  padding: 30px;
+  text-align: center;
+  color: #666;
+  font-style: italic;
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  .config-editor {
+    color: #e0e0e0;
+  }
+  
+  .config-editor h2 {
+    color: #e0e0e0;
+  }
+  
+  .category-tabs {
+    border-bottom-color: #444;
+  }
+  
+  .category-tab {
+    color: #bbb;
+  }
+  
+  .category-tab:hover {
+    color: #4a90e2;
+  }
+  
+  .category-tab.active {
+    color: #4a90e2;
+  }
+  
+  .cancel-button {
+    background-color: #424242;
+    color: #e0e0e0;
+  }
+  
+  .cancel-button:hover {
+    background-color: #505050;
+  }
+  
+  .config-list {
+    background-color: #2a2a2a;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+  
+  .category-title {
+    background-color: #333;
+    border-bottom-color: #444;
+  }
+  
+  .config-item {
+    border-bottom-color: #444;
+  }
+  
+  .config-key {
+    color: #e0e0e0;
+  }
+  
+  .config-description {
+    color: #bbb;
+  }
+  
+  .config-input, .config-select {
+    background-color: #333;
+    border-color: #555;
+    color: #e0e0e0;
+  }
+  
+  .config-input:focus, .config-select:focus {
+    border-color: #4a90e2;
+  }
+  
+  .config-input:disabled, .config-select:disabled {
+    background-color: #383838;
+  }
+  
+  .no-items {
+    color: #aaa;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .config-editor-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .category-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 5px;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .config-item {
+    flex-direction: column;
+  }
+  
+  .config-info {
+    margin-bottom: 10px;
+    padding-right: 0;
+  }
+  
+  .config-value {
+    width: 100%;
+  }
+}

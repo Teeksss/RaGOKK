@@ -1,0 +1,53 @@
+# Last reviewed: 2025-04-29 07:10:53 UTC (User: Teeksss)
+# Temel Çalışma
+fastapi
+uvicorn[standard]
+elasticsearch[async]>=8.0.0,<9.0.0
+python-dotenv
+requests
+# Veri Kaynakları ve İşleme
+psycopg2-binary # Adım 7: Pooling için psycopg2.pool gerekebilir
+mysql-connector-python # Adım 7: Pooling için mysql.connector.pooling gerekebilir
+pymongo # Adım 6: Async için 'motor' önerilir
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+dropbox
+sentence-transformers
+torch # CPU/GPU versiyonu kontrol edilmeli
+requests-oauthlib
+transformers # Adım 11: Lokal LLM için (Opsiyonel)
+accelerate # Adım 11: Transformers optimizasyonu için (Opsiyonel)
+bitsandbytes # Adım 11: Transformers optimizasyonu için (Opsiyonel, Linux/Windows)
+# OCR / PDF / Web
+pytesseract
+Pillow
+PyPDF2 # Adım 15: Alternatif: pdfplumber, PyMuPDF
+beautifulsoup4 # Adım 15: Alternatif: boilerpy3, readability-lxml, Playwright/Selenium
+# Güvenlik
+python-jose[cryptography] # JWT
+passlib[bcrypt] # Şifre hashing
+itsdangerous # Oturum cookie'lerini imzalamak için
+python-magic # MIME türü algılama (Opsiyonel, sistemde libmagic gerekir)
+werkzeug # secure_filename için
+# Adım 3: CSRF Koruması (Eklenecek Kütüphane - Örnek)
+# fastapi-csrf-protect
+# Adım 4: Rate Limiting (Eklenecek Kütüphane - Örnek)
+# slowapi
+# Veri İşleme/Chunking
+langchain # Text splitter için (Opsiyonel)
+# Testler (Eklenecek Kütüphaneler - Örnek)
+# pytest
+# pytest-asyncio
+# httpx
+# pytest-cov
+# unittest.mock # Python built-in
+# Değerlendirme (Eklenecek Kütüphane - Örnek)
+# ragas
+# Loglama (Eklenecek Kütüphane - Örnek)
+# python-json-logger
+# Veritabanı ORM / Async (Eklenecek Kütüphaneler - Örnek)
+# sqlalchemy[asyncio] # Adım 2, 7
+# asyncpg # Adım 6 (PostgreSQL)
+# motor # Adım 6 (MongoDB)
+# aiomysql # Adım 6 (MySQL)

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            padding: 20px;
+            background-color: #f44336;
+            color: white;
+        }
+        .content {
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-top: none;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            font-size: 12px;
+            color: #777777;
+            border-top: 1px solid #e0e0e0;
+        }
+        .alert {
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+        .alert.info {
+            background-color: #e3f2fd;
+            border: 1px solid #bbdefb;
+            color: #0d47a1;
+        }
+        .alert.warning {
+            background-color: #fff8e1;
+            border: 1px solid #ffecb3;
+            color: #ff8f00;
+        }
+        .alert.error {
+            background-color: #ffebee;
+            border: 1px solid #ffcdd2;
+            color: #c62828;
+        }
+        .alert.critical {
+            background-color: #c62828;
+            border: 1px solid #b71c1c;
+            color: #ffffff;
+            font-weight: bold;
+        }
+        .severity-badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .severity-info {
+            background-color: #e3f2fd;
+            color: #0d47a1;
+        }
+        .severity-warning {
+            background-color: #fff8e1;
+            color: #ff8f00;
+        }
+        .severity-error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .severity-critical {
+            background-color: #c62828;
+            color: #ffffff;
+        }
+        .detail-section {
+            background-color: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .detail-item {
+            margin-bottom: 8px;
+        }
+        .detail-label {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #f44336;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            text-align: center;
+            margin-top: 15px;
+        }
+        .button:hover {
+            background-color: #e53935;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Güvenlik Uyarısı</h1>
+        </div>
+        
+        <div class="content">
+            <h2>{{ event_type }}</h2>
+            
+            <span class="severity-badge severity-{{ severity_class }}">{{ severity|title }}</span>
+            
+            <div class="alert {{ severity_class }}">
+                <p><strong>Önem Derecesi:</strong> {{ severity|title }}</p>
+                <p><strong>Mesaj:</strong> {{ message }}</p>
+            </div>
+            
+            {% if details_html %}
+                <div class="detail-section">
+                    {{ details_html|safe }}
+                </div>
+            {% endif %}
+            
+            <p><strong>Zaman:</strong> {{ details.timestamp if details and details.timestamp else now() }}</p>
+            
+            <a href="{{ system_url|default('#') }}/security-logs" class="button">Güvenlik Loglarını Görüntüle</a>
+        </div>
+        
+        <div class="footer">
+            <p>Bu e-posta otomatik olarak oluşturulmuştur. Lütfen yanıtlamayınız.</p>
+            <p>&copy; {{ now().year }} RAG Base. Tüm hakları saklıdır.</p>
+        </div>
+    </div>
+</body>
+</html>

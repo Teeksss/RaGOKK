@@ -1,0 +1,259 @@
+/* Last reviewed: 2025-04-29 08:53:08 UTC (User: Teekssseskikleri) */
+.results-container {
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.results-tabs {
+  display: flex;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 15px;
+}
+
+.tab-button {
+  padding: 10px 15px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #666;
+  margin-right: 10px;
+}
+
+.tab-button:hover {
+  color: #4a90e2;
+}
+
+.tab-button.active {
+  color: #4a90e2;
+  border-bottom-color: #4a90e2;
+  font-weight: 500;
+}
+
+.answer-container {
+  line-height: 1.6;
+}
+
+.hallucination-warning {
+  background-color: #fff3cd;
+  border-left: 4px solid #ffc107;
+  padding: 12px 15px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.warning-icon {
+  font-size: 1.2rem;
+  margin-right: 10px;
+}
+
+.confidence-indicator {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  margin-bottom: 15px;
+}
+
+.high-confidence {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.medium-confidence {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.low-confidence {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.confidence-label {
+  font-weight: 500;
+  margin-right: 5px;
+}
+
+.confidence-value {
+  font-weight: bold;
+}
+
+.answer-text {
+  font-size: 1rem;
+  white-space: pre-line;
+}
+
+.answer-text p {
+  margin-bottom: 1rem;
+}
+
+.answer-text ul, .answer-text ol {
+  padding-left: 20px;
+  margin-bottom: 1rem;
+}
+
+.citation {
+  display: inline-block;
+  background-color: #e6f7ff;
+  border-radius: 3px;
+  padding: 2px 5px;
+  margin: 0 2px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.citation:hover {
+  background-color: #bae7ff;
+}
+
+.citations-section {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px dashed #ddd;
+}
+
+.citations-section h3 {
+  font-size: 1rem;
+  margin-bottom: 10px;
+}
+
+.citation-list {
+  list-style: none;
+  padding: 0;
+}
+
+.citation-item {
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.citation-text {
+  color: #555;
+}
+
+.docs-container h3 {
+  font-size: 1.1rem;
+  margin-bottom: 15px;
+}
+
+.docs-list {
+  list-style: none;
+  padding: 0;
+}
+
+.doc-item {
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.doc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.doc-title {
+  margin: 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+.doc-score {
+  font-size: 0.8rem;
+  background-color: #f0f0f0;
+  padding: 3px 6px;
+  border-radius: 3px;
+  color: #666;
+}
+
+.doc-meta {
+  margin-bottom: 10px;
+}
+
+.meta-tag {
+  display: inline-block;
+  background-color: #f0f0f0;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  color: #666;
+  margin-right: 6px;
+  margin-bottom: 4px;
+}
+
+.meta-tag.source-type {
+  background-color: #e6f7ff;
+  color: #0070f3;
+}
+
+.meta-tag.timestamp {
+  background-color: #f6f6f6;
+}
+
+.meta-tag.category {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.meta-tag.author {
+  background-color: #f8f9fa;
+  color: #6c757d;
+}
+
+.doc-text {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #444;
+  white-space: pre-line;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-radius: 3px;
+}
+
+.empty-docs {
+  padding: 30px;
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+.tool-result {
+  margin: 15px 0;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-left: 3px solid #4a90e2;
+  border-radius: 3px;
+}
+
+.tool-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.tool-content {
+  background-color: #f1f1f1;
+  padding: 10px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.9rem;
+  overflow-x: auto;
+  margin: 0;
+}

@@ -1,0 +1,47 @@
+/* Last reviewed: 2025-04-29 07:07:30 UTC (User: Teeksss) */
+/* ... (Önceki stiller) ... */
+
+/* Adım 13: UX - Loading Spinner Stili (Placeholder) */
+.spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border-left-color: #09f;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 8px;
+
+  animation: spin 1s ease infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-message.global-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Adım 13: UX - Toast Notification Stili (Placeholder) */
+.toast-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 5px;
+    color: white;
+    font-weight: bold;
+    z-index: 1000;
+    min-width: 250px;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+.toast-notification.success { background-color: #2ecc71; }
+.toast-notification.error { background-color: #e74c3c; }
+.toast-notification.info { background-color: #3498db; }
+
+/* ... (Diğer stiller) ... */

@@ -1,0 +1,197 @@
+/* Responsive Design İyileştirmeleri - Last reviewed: 2025-04-29 10:16:09 UTC (User: TeeksssAdvancedSearch.css) */
+
+/* Tablet ve mobil cihazlar için genel düzen ayarlamaları */
+@media (max-width: 992px) {
+  .api-providers-grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .api-providers-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .api-provider-card {
+    padding: 12px;
+  }
+  
+  .provider-icon {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* Küçük mobil cihazlar için ince ayarlar */
+@media (max-width: 576px) {
+  .api-provider-card {
+    flex-direction: column;
+  }
+  
+  .provider-icon {
+    margin-right: 0;
+    margin-bottom: 10px;
+    align-self: center;
+  }
+  
+  .provider-details {
+    margin-bottom: 15px;
+    text-align: center;
+  }
+  
+  .provider-actions {
+    width: 100%;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .action-buttons button {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  
+  .add-key-button {
+    width: 100%;
+  }
+  
+  /* Modal düzenlemeleri */
+  .api-key-modal {
+    width: 95%;
+    max-width: 100%;
+  }
+  
+  .api-key-modal-content {
+    padding: 15px;
+  }
+  
+  .api-key-modal-content h2 {
+    font-size: 16px;
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .modal-footer button {
+    width: 100%;
+  }
+  
+  /* Form elemanları düzenlemeleri */
+  .form-group label {
+    font-size: 13px;
+  }
+  
+  .form-group input, .form-group select {
+    font-size: 14px;
+    padding: 8px;
+  }
+  
+  /* API anahtarı doğrulama sonuçları */
+  .verification-result {
+    padding: 10px;
+  }
+  
+  .verification-result h3 {
+    font-size: 14px;
+  }
+  
+  .verification-details pre {
+    font-size: 11px;
+  }
+}
+
+/* Dokunmatik cihazlar için dokunma alanı iyileştirmeleri */
+@media (hover: none) {
+  .action-buttons button,
+  .add-key-button,
+  .toggle-password {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+  
+  .form-group.checkbox label {
+    min-height: 44px;
+    padding: 10px 0;
+  }
+}
+
+/* Dark mode desteği */
+@media (prefers-color-scheme: dark) {
+  .api-provider-card {
+    background-color: #2a2a2a;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  
+  .provider-details h3 {
+    color: #eee;
+  }
+  
+  .provider-category,
+  .provider-description,
+  .api-key-info {
+    color: #aaa;
+  }
+  
+  .status-indicator.green {
+    background-color: rgba(0, 166, 81, 0.2);
+  }
+  
+  .status-indicator.red {
+    background-color: rgba(229, 57, 53, 0.2);
+  }
+  
+  .status-indicator.gray {
+    background-color: rgba(117, 117, 117, 0.2);
+  }
+  
+  .edit-key-button {
+    background-color: #3a3a3a;
+    color: #eee;
+  }
+  
+  .edit-key-button:hover {
+    background-color: #444;
+  }
+  
+  .api-key-modal {
+    background-color: #2a2a2a;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+  
+  .api-key-modal-content h2 {
+    color: #eee;
+  }
+  
+  .form-group label {
+    color: #ddd;
+  }
+  
+  .form-group input,
+  .form-group select {
+    background-color: #333;
+    border-color: #555;
+    color: #eee;
+  }
+  
+  .form-group input:focus,
+  .form-group select:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3);
+  }
+  
+  .cancel-button {
+    background-color: #444;
+    color: #eee;
+  }
+  
+  .cancel-button:hover {
+    background-color: #555;
+  }
+  
+  .verification-result.success {
+    background-color: rgba(0, 166, 81, 0.2);
+    border-color: rgba(0, 166, 81,
