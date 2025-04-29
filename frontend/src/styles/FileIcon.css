@@ -1,0 +1,50 @@
+/* Last reviewed: 2025-04-29 11:55:43 UTC (User: TeeksssTespit Edilen Eksiklikleri tamamla) */
+.file-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+  color: white;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.file-icon-sm {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+}
+
+.file-icon-md {
+  width: 48px;
+  height: 48px;
+  font-size: 22px;
+}
+
+.file-icon-lg {
+  width: 64px;
+  height: 64px;
+  font-size: 30px;
+}
+
+/* Dark Mode Adjustments */
+@media (prefers-color-scheme: dark) {
+  .file-icon {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+  .file-icon-md {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+  
+  .file-icon-lg {
+    width: 56px;
+    height: 56px;
+    font-size: 26px;
+  }
+}

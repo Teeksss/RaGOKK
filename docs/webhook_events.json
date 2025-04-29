@@ -1,0 +1,497 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "RAG Base Webhook Events",
+    "description": "Bu doküman RAG Base platformunun gönderdiği webhook event formatlarını detaylandırır",
+    "version": "1.0.0",
+    "contact": {
+      "name": "RAG Base Support",
+      "email": "support@ragbase.example.com"
+    }
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "BaseEvent": {
+        "type": "object",
+        "required": [
+          "event_type",
+          "timestamp",
+          "data"
+        ],
+        "properties": {
+          "event_type": {
+            "type": "string",
+            "description": "Olayın tipi"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Olayın oluşturulduğu UTC zaman"
+          },
+          "data": {
+            "type": "object",
+            "description": "Olay ile ilgili veriler"
+          },
+          "webhook_id": {
+            "type": "string",
+            "description": "Bu webhook'un benzersiz kimliği"
+          },
+          "delivery_attempt": {
+            "type": "integer",
+            "description": "Webhook teslim deneme sayısı"
+          }
+        }
+      },
+      "DocumentUploadedEvent": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseEvent"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "event_type": {
+                "type": "string",
+                "enum": ["document_uploaded"],
+                "description": "Doküman yükleme olayı"
+              },
+              "data": {
+                "type": "object",
+                "required": [
+                  "document_id",
+                  "title",
+                  "owner_id",
+                  "created_at"
+                ],
+                "properties": {
+                  "document_id": {
+                    "type": "integer",
+                    "description": "Yüklenen dokümanın ID'si"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Doküman başlığı"
+                  },
+                  "source_type": {
+                    "type": "string",
+                    "description": "Dokümanın kaynak formatı",
+                    "enum": ["pdf", "docx", "txt", "html", "json", "xml", "csv", "image"]
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Doküman açıklaması"
+                  },
+                  "owner_id": {
+                    "type": "string",
+                    "description": "Dokümanı yükleyen kullanıcının ID'si"
+                  },
+                  "owner_name": {
+                    "type": "string",
+                    "description": "Dokümanı yükleyen kullanıcının adı"
+                  },
+                  "created_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Dokümanın oluşturulma zamanı"
+                  },
+                  "file_size": {
+                    "type": "integer",
+                    "description": "Dosya boyutu (byte)"
+                  },
+                  "is_public": {
+                    "type": "boolean",
+                    "description": "Dokümanın herkese açık olup olmadığı"
+                  },
+                  "collection_id": {
+                    "type": "integer",
+                    "nullable": true,
+                    "description": "Dokümanın ait olduğu koleksiyon ID'si"
+                  },
+                  "tags": {
+                    "type": "array",
+                    "description": "Doküman etiketleri",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "description": "Doküman meta verileri",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "DocumentProcessedEvent": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseEvent"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "event_type": {
+                "type": "string",
+                "enum": ["document_processed"],
+                "description": "Doküman işleme olayı"
+              },
+              "data": {
+                "type": "object",
+                "required": [
+                  "document_id",
+                  "success"
+                ],
+                "properties": {
+                  "document_id": {
+                    "type": "integer",
+                    "description": "İşlenen dokümanın ID'si"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Doküman başlığı"
+                  },
+                  "success": {
+                    "type": "boolean",
+                    "description": "İşlemin başarılı olup olmadığı"
+                  },
+                  "processing_time": {
+                    "type": "number",
+                    "description": "İşleme süresi (saniye)"
+                  },
+                  "processing_details": {
+                    "type": "object",
+                    "description": "İşleme detayları",
+                    "properties": {
+                      "word_count": {
+                        "type": "integer",
+                        "description": "Doküman kelime sayısı"
+                      },
+                      "page_count": {
+                        "type": "integer",
+                        "description": "Doküman sayfa sayısı"
+                      },
+                      "language": {
+                        "type": "string",
+                        "description": "Tespit edilen doküman dili"
+                      },
+                      "embedding_count": {
+                        "type": "integer",
+                        "description": "Oluşturulan vektör sayısı"
+                      }
+                    },
+                    "additionalProperties": true
+                  },
+                  "error": {
+                    "type": "string",
+                    "description": "Hata oluştuysa hata mesajı"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "DocumentUpdatedEvent": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseEvent"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "event_type": {
+                "type": "string",
+                "enum": ["document_updated"],
+                "description": "Doküman güncelleme olayı"
+              },
+              "data": {
+                "type": "object",
+                "required": [
+                  "document_id",
+                  "updated_by"
+                ],
+                "properties": {
+                  "document_id": {
+                    "type": "integer",
+                    "description": "Güncellenen dokümanın ID'si"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Doküman başlığı"
+                  },
+                  "updated_by": {
+                    "type": "string",
+                    "description": "Dokümanı güncelleyen kullanıcı ID'si"
+                  },
+                  "user_name": {
+                    "type": "string",
+                    "description": "Dokümanı güncelleyen kullanıcı adı"
+                  },
+                  "updated_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Güncelleme zamanı"
+                  },
+                  "version_id": {
+                    "type": "integer",
+                    "description": "Güncelleme ile oluşan versiyon ID'si"
+                  },
+                  "version_label": {
+                    "type": "string",
+                    "description": "Versiyon etiketi"
+                  },
+                  "change_description": {
+                    "type": "string",
+                    "description": "Değişiklik açıklaması"
+                  },
+                  "updated_fields": {
+                    "type": "array",
+                    "description": "Güncellenen alanlar",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "DocumentSharedEvent": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseEvent"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "event_type": {
+                "type": "string",
+                "enum": ["document_shared"],
+                "description": "Doküman paylaşım olayı"
+              },
+              "data": {
+                "type": "object",
+                "required": [
+                  "document_id",
+                  "shared_by",
+                  "shared_with"
+                ],
+                "properties": {
+                  "document_id": {
+                    "type": "integer",
+                    "description": "Paylaşılan dokümanın ID'si"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Doküman başlığı"
+                  },
+                  "shared_by": {
+                    "type": "string",
+                    "description": "Dokümanı paylaşan kullanıcı ID'si"
+                  },
+                  "shared_with": {
+                    "type": "string",
+                    "description": "Dokümanın paylaşıldığı kullanıcı ID'si"
+                  },
+                  "user_name": {
+                    "type": "string",
+                    "description": "Dokümanın paylaşıldığı kullanıcının adı"
+                  },
+                  "permission_type": {
+                    "type": "string",
+                    "enum": ["read", "write", "admin"],
+                    "description": "Verilen izin türü"
+                  },
+                  "shared_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Paylaşım zamanı"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "DocumentDeletedEvent": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseEvent"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "event_type": {
+                "type": "string",
+                "enum": ["document_deleted"],
+                "description": "Doküman silme olayı"
+              },
+              "data": {
+                "type": "object",
+                "required": [
+                  "document_id",
+                  "deleted_by"
+                ],
+                "properties": {
+                  "document_id": {
+                    "type": "integer",
+                    "description": "Silinen dokümanın ID'si"
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Silinen dokümanın başlığı"
+                  },
+                  "deleted_by": {
+                    "type": "string",
+                    "description": "Dokümanı silen kullanıcı ID'si"
+                  },
+                  "owner_id": {
+                    "type": "string",
+                    "description": "Dokümanın sahibi olan kullanıcı ID'si"
+                  },
+                  "deleted_at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Silme zamanı"
+                  },
+                  "permanently_deleted": {
+                    "type": "boolean",
+                    "description": "Kalıcı olarak mı silindi yoksa çöp kutusuna mı taşındı"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "SecurityAlertEvent": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseEvent"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "event_type": {
+                "type": "string",
+                "enum": ["security_alert"],
+                "description": "Güvenlik uyarısı olayı"
+              },
+              "data": {
+                "type": "object",
+                "required": [
+                  "alert_id",
+                  "alert_type",
+                  "severity"
+                ],
+                "properties": {
+                  "alert_id": {
+                    "type": "string",
+                    "description": "Uyarı ID'si"
+                  },
+                  "alert_type": {
+                    "type": "string",
+                    "description": "Uyarı tipi",
+                    "enum": ["login_attempt", "permission_change", "suspicious_file", "data_leak", "api_abuse"]
+                  },
+                  "title": {
+                    "type": "string",
+                    "description": "Uyarı başlığı"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Uyarı açıklaması"
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high", "critical"],
+                    "description": "Uyarı şiddeti"
+                  },
+                  "source_ip": {
+                    "type": "string",
+                    "description": "Kaynak IP adresi"
+                  },
+                  "user_id": {
+                    "type": "string",
+                    "description": "İlgili kullanıcı ID'si"
+                  },
+                  "resource_id": {
+                    "type": "string",
+                    "description": "İlgili kaynak ID'si (varsa)"
+                  },
+                  "resource_type": {
+                    "type": "string",
+                    "description": "İlgili kaynak türü (varsa)"
+                  },
+                  "details": {
+                    "type": "object",
+                    "description": "Ek detaylar",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "UserRegisteredEvent": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/BaseEvent"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "event_type": {
+                "type": "string",
+                "enum": ["user_registered"],
+                "description": "Kullanıcı kayıt olayı"
+              },
+              "data": {
+                "type": "object",
+                "required": [
+                  "user_id",
+                  "email"
+                ],
+                "properties": {
+                  "user_id": {
+                    "type": "string",
+                    "description": "Kullanıcı ID'si"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Kullanıcı e-posta adresi"
+                  },
+                  "username": {
+                    "type": "string",
+                    "description": "Kullanıcı adı"
+                  },
+                  "full_name": {
+                    "type": "string",
+                    "description": "Kullanıcının tam adı"
+                  },
+                  "registration_time": {
+                    "type": "string",
+                    "format": "date-time",
+                    "description": "Kayıt zamanı"
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "Kayıt kaynağı",
+                    "enum": ["web", "api", "sso", "invitation"]
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

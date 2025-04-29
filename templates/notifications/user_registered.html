@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hesabınız Oluşturuldu</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+
+    .container {
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .logo img {
+      height: 40px;
+      width: auto;
+    }
+
+    h1 {
+      color: #059669;
+      margin-top: 0;
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    .welcome-banner {
+      background-color: #ecfdf5;
+      border-radius: 6px;
+      padding: 20px;
+      text-align: center;
+      margin: 20px 0;
+    }
+    
+    .welcome-banner h2 {
+      color: #059669;
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .welcome-banner p {
+      margin: 10px 0 0 0;
+      color: #047857;
+    }
+
+    .feature {
+      margin-top: 25px;
+      display: flex;
+      align-items: flex-start;
+    }
+    
+    .feature-icon {
+      width: 40px;
+      height: 40px;
+      background-color: #d1fae5;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 15px;
+      flex-shrink: 0;
+      color: #059669;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .feature-content {
+      flex: 1;
+    }
+    
+    .feature-content h3 {
+      margin: 0 0 5px 0;
+      font-size: 16px;
+      color: #047857;
+      font-weight: 600;
+    }
+    
+    .feature-content p {
+      margin: 0;
+      font-size: 14px;
+      color: #4b5563;
+    }
+
+    .button {
+      display: inline-block;
+      background-color: #059669;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-weight: 500;
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .help-section {
+      background-color: #f3f4f6;
+      border-radius: 6px;
+      padding: 15px;
+      margin-top: 30px;
+    }
+    
+    .help-section h3 {
+      margin-top: 0;
+      font-size: 16px;
+      color: #4b5563;
+    }
+
+    .help-section p {
+      margin-bottom: 0;
+      font-size: 14px;
+    }
+
+    .footer {
+      margin-top: 30px;
+      font-size: 12px;
+      color: #6b7280;
+      text-align: center;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 20px;
+    }
+
+    .footer a {
+      color: #059669;
+      text-decoration: none;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+      }
+      
+      .container {
+        background-color: #2a2a2a;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      }
+      
+      h1 {
+        color: #10b981;
+      }
+      
+      .welcome-banner {
+        background-color: #064e3b;
+      }
+      
+      .welcome-banner h2 {
+        color: #10b981;
+      }
+      
+      .welcome-banner p {
+        color: #34d399;
+      }
+      
+      .feature-icon {
+        background-color: #065f46;
+        color: #10b981;
+      }
+      
+      .feature-content h3 {
+        color: #10b981;
+      }
+      
+      .feature-content p {
+        color: #9ca3af;
+      }
+      
+      .help-section {
+        background-color: #374151;
+      }
+      
+      .help-section h3 {
+        color: #d1d5db;
+      }
+      
+      .footer {
+        color: #9ca3af;
+        border-top: 1px solid #374151;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <img src="{{ base_url }}/static/images/logo.png" alt="RAG Base Logo">
+    </div>
+    
+    <h1>Hesabınız Oluşturuldu</h1>
+    
+    <p>Merhaba {{ user.full_name }},</p>
+    
+    <p>RAG Base sistemine hoş geldiniz! Hesabınız başarıyla oluşturuldu.</p>
+    
+    <div class="welcome-banner">
+      <h2>RAG Base'e Hoş Geldiniz!</h2>
+      <p>Yapay zeka destekli doküman yönetim ve arama platformu</p>
+    </div>
+    
+    <p>RAG Base ile neler yapabilirsiniz:</p>
+    
+    <div class="feature">
+      <div class="feature-icon">📄</div>
+      <div class="feature-content">
+        <h3>Doküman Yönetimi</h3>
+        <p>PDF, Word, HTML ve metin belgelerinizi yükleyin, düzenleyin ve kolaylıkla yönetin.</p>
+      </div>
+    </div>
+    
+    <div class="feature">
+      <div class="feature-icon">🔍</div>
+      <div class="feature-content">
+        <h3>Akıllı Arama</h3>
+        <p>Semantik arama ile belgelerinizin içeriğini derinlemesine sorgulayın.</p>
+      </div>
+    </div>
+    
+    <div class="feature">
+      <div class="feature-icon">🤝</div>
+      <div class="feature-content">
+        <h3>İşbirliği</h3>
+        <p>Dokümanlarınızı paylaşın ve ekibinizle birlikte çalışın.</p>
+      </div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 30px;">
+      <a href="{{ base_url }}/login" class="button">Hesabınıza Giriş Yapın</a>
+    </div>
+    
+    <div class="help-section">
+      <h3>Yardıma mı ihtiyacınız var?</h3>
+      <p>Destek ekibimizle iletişime geçmekten çekinmeyin: <a href="mailto:support@ragbase.com">support@ragbase.com</a></p>
+    </div>
+    
+    <div class="footer">
+      <p>Bu otomatik bir bildirimdir. Lütfen bu e-postaya yanıt vermeyiniz.</p>
+      <p>© {{ current_year }} RAG Base. Tüm hakları saklıdır.</p>
+      <p>
+        <a href="{{ base_url }}/docs">Dokümantasyon</a> | 
+        <a href="{{ base_url }}/privacy-policy">Gizlilik Politikası</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>

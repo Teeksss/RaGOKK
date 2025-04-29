@@ -1,0 +1,190 @@
+# Last reviewed: 2025-04-29 12:51:02 UTC (User: TeeksssCI/CD)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: rag-base-prod
+  labels:
+    app: rag-base
+    tier: backend
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: rag-base
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: rag-base
+        tier: backend
+    spec:
+      containers:
+      - name: backend
+        image: ghcr.io/organization/rag-base/backend:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: rag-base-secrets
+              key: database_url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: rag-base-secrets
+              key: redis_url
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: rag-base-secrets
+              key: jwt_secret
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: rag-base-secrets
+              key: openai_api_key
+        - name: CELERY_BROKER_URL
+          valueFrom:
+            secretKeyRef:
+              name: rag-base-secrets
+              key: redis_url
+        - name: CELERY_RESULT_BACKEND
+          valueFrom:
+            secretKeyRef:
+              name: rag-base-secrets
+              key: redis_url
+        envFrom:
+        - configMapRef:
+            name: rag-base-config
+        volumeMounts:
+        - name: storage-volume
+          mountPath: /app/data
+        - name: temp-volume
+          mountPath: /app/tmp
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+      volumes:
+      - name: storage-volume
+        persistentVolumeClaim:
+          claimName: rag-base-storage-pvc
+      - name: temp-volume
+        emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-worker
+  namespace: rag-base-prod
+  labels:
+    app: rag-base
+    tier: celery
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rag-base
+      tier: celery
+  template:
+    metadata:
+      labels:
+        app: rag-base
+        tier: celery
+    spec:
+      containers:
+      - name: celery-worker
+        image: ghcr.io/organization/rag-base/backend:latest
+        command: ["celery", "-A", "tasks.celery_app", "worker", "--loglevel=info"]
+        resources:
+          limits:
+            cpu: "2"
+            memory: "4Gi"
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: rag-base-secrets
+              key: database_url
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: rag-base-secrets
+              key: redis_url
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: rag-base-secrets
+              key: jwt_secret
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: rag-base-secrets
+              key: openai_api_key
+        - name: CELERY_BROKER_URL
+          valueFrom:
+            secretKeyRef:
+              name: rag-base-secrets
+              key: redis_url
+        - name: CELERY_RESULT_BACKEND
+          valueFrom:
+            secretKeyRef:
+              name: rag-base-secrets
+              key: redis_url
+        envFrom:
+        - configMapRef:
+            name: rag-base-config
+        volumeMounts:
+        - name: storage-volume
+          mountPath: /app/data
+        - name: temp-volume
+          mountPath: /app/tmp
+      volumes:
+      - name: storage-volume
+        persistentVolumeClaim:
+          claimName: rag-base-storage-pvc
+      - name: temp-volume
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: rag-base-prod
+  labels:
+    app: rag-base
+spec:
+  selector:
+    app: rag-base
+    tier: backend
+  ports:
+  - port: 80
+    targetPort: 8000
+  type: ClusterIP

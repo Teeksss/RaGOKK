@@ -1,0 +1,166 @@
+# Last reviewed: 2025-04-29 12:51:02 UTC (User: TeeksssCI/CD)
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: ragbase-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=ragbase
+      - POSTGRES_PASSWORD=ragbase
+      - POSTGRES_DB=ragbase
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ragbase"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ragbase-network
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:alpine
+    container_name: ragbase-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ragbase-network
+    ports:
+      - "6379:6379"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    container_name: ragbase-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - xpack.security.enabled=false
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    networks:
+      - ragbase-network
+    ports:
+      - "9200:9200"
+
+  backend:
+    build:
+      context: ./backend
+    container_name: ragbase-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://ragbase:ragbase@postgres:5432/ragbase
+      - REDIS_URL=redis://redis:6379/0
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - JWT_SECRET=change_this_in_production
+      - SECRET_KEY=another_secret_key_for_production
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - VECTOR_DB=elasticsearch
+      - OCR_ENGINE=tesseract
+      - PYTHONPATH=/app
+    volumes:
+      - ./backend:/app
+      - storage-data:/app/data
+      - temp-data:/app/tmp
+    networks:
+      - ragbase-network
+    ports:
+      - "8000:8000"
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  celery_worker:
+    build:
+      context: ./backend
+    container_name: ragbase-celery-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://ragbase:ragbase@postgres:5432/ragbase
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET=change_this_in_production
+      - SECRET_KEY=another_secret_key_for_production
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - PYTHONPATH=/app
+      - VECTOR_DB=elasticsearch
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    volumes:
+      - ./backend:/app
+      - storage-data:/app/data
+      - temp-data:/app/tmp
+    networks:
+      - ragbase-network
+    command: celery -A tasks.celery_app worker --loglevel=info
+
+  flower:
+    build:
+      context: ./backend
+    container_name: ragbase-flower
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - celery_worker
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    networks:
+      - ragbase-network
+    ports:
+      - "5555:5555"
+    command: celery -A tasks.celery_app flower --port=5555
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - API_BASE_URL=http://localhost:8000
+    container_name: ragbase-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - ragbase-network
+    ports:
+      - "3000:3000"
+
+networks:
+  ragbase-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  elasticsearch-data:
+  storage-data:
+  temp-data:

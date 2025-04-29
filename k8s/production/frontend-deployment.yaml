@@ -1,0 +1,71 @@
+# Last reviewed: 2025-04-29 12:51:02 UTC (User: TeeksssCI/CD)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: rag-base-prod
+  labels:
+    app: rag-base
+    tier: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rag-base
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: rag-base
+        tier: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: ghcr.io/organization/rag-base/frontend:latest
+        ports:
+        - containerPort: 3000
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+        env:
+        - name: API_BASE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: rag-base-config
+              key: api_base_url
+        - name: NODE_ENV
+          value: "production"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: rag-base-prod
+  labels:
+    app: rag-base
+spec:
+  selector:
+    app: rag-base
+    tier: frontend
+  ports:
+  - port: 80
+    targetPort: 3000
+  type: ClusterIP

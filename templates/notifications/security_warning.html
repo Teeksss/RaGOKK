@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Güvenlik Uyarısı</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+
+    .container {
+      background-color: #fff;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .logo img {
+      height: 40px;
+      width: auto;
+    }
+
+    h1 {
+      color: #dc2626;
+      margin-top: 0;
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    .alert-badge {
+      background-color: #fee2e2;
+      color: #dc2626;
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-weight: 500;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .warning-info {
+      background-color: #fff0f0;
+      border-left: 4px solid #dc2626;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+
+    .warning-title {
+      font-weight: 600;
+      color: #b91c1c;
+      margin-top: 0;
+    }
+
+    .warning-meta {
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .button {
+      display: inline-block;
+      background-color: #dc2626;
+      color: #ffffff !important;
+      text-decoration: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      font-weight: 500;
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .footer {
+      margin-top: 30px;
+      font-size: 12px;
+      color: #6b7280;
+      text-align: center;
+      border-top: 1px solid #e5e7eb;
+      padding-top: 20px;
+    }
+
+    .footer a {
+      color: #dc2626;
+      text-decoration: none;
+    }
+    
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+      }
+      
+      .container {
+        background-color: #2a2a2a;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      }
+      
+      h1 {
+        color: #ef4444;
+      }
+      
+      .alert-badge {
+        background-color: #7f1d1d;
+        color: #fca5a5;
+      }
+      
+      .warning-info {
+        background-color: #3b0404;
+        border-left: 4px solid #ef4444;
+      }
+      
+      .warning-title {
+        color: #f87171;
+      }
+      
+      .warning-meta {
+        color: #9ca3af;
+      }
+      
+      .footer {
+        color: #9ca3af;
+        border-top: 1px solid #374151;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <img src="{{ base_url }}/static/images/logo.png" alt="RAG Base Logo">
+    </div>
+    
+    <div style="text-align: center;">
+      <span class="alert-badge">Güvenlik Uyarısı</span>
+    </div>
+    
+    <h1>Güvenlik Uyarısı Tespit Edildi</h1>
+    
+    <p>Merhaba {{ user_name }},</p>
+    
+    <p>RAG Base sisteminizde bir güvenlik uyarısı tespit edildi.</p>
+    
+    <div class="warning-info">
+      <h3 class="warning-title">{{ alert.title }}</h3>
+      <p><strong>Olay Tipi:</strong> {{ alert.type }}</p>
+      <p><strong>Tarih ve Saat:</strong> {{ alert.timestamp|format_date }}</p>
+      <p><strong>Önem Derecesi:</strong> {{ alert.severity }}</p>
+      <p><strong>IP Adresi:</strong> {{ alert.source_ip }}</p>
+      
+      {% if alert.details %}
+      <p><strong>Detaylar:</strong> {{ alert.details }}</p>
+      {% endif %}
+    </div>
+    
+    <p>Güvenlik uyarısının detaylarını inceleyip gerekli önlemleri alabilirsiniz.</p>
+    
+    <div style="text-align: center;">
+      <a href="{{ base_url }}/security/alerts/{{ alert.id }}" class="button">Güvenlik Paneline Git</a>
+    </div>
+    
+    <div class="footer">
+      <p>Bu otomatik bir güvenlik bildirimdir. Lütfen bu e-postaya yanıt vermeyiniz.</p>
+      <p>© {{ current_year }} RAG Base. Tüm hakları saklıdır.</p>
+      <p>
+        <a href="{{ base_url }}/settings/security">Güvenlik Ayarları</a> | 
+        <a href="{{ base_url }}/privacy-policy">Gizlilik Politikası</a>
+      </p>
+    </div>
+  </div>
+</body>
+</html>
