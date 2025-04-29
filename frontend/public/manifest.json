@@ -1,0 +1,70 @@
+{
+  "short_name": "RAG Base",
+  "name": "RAG Base Document Management",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "logo192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "logo512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#2563eb",
+  "background_color": "#ffffff",
+  "orientation": "any",
+  "description": "RAG Base Document Management System",
+  "screenshots": [
+    {
+      "src": "screenshots/desktop1.png",
+      "type": "image/png",
+      "sizes": "1280x800",
+      "form_factor": "wide"
+    },
+    {
+      "src": "screenshots/desktop2.png",
+      "type": "image/png",
+      "sizes": "1280x800",
+      "form_factor": "wide"
+    },
+    {
+      "src": "screenshots/mobile1.png",
+      "type": "image/png",
+      "sizes": "320x640",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "screenshots/mobile2.png",
+      "type": "image/png",
+      "sizes": "320x640",
+      "form_factor": "narrow"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Search Documents",
+      "short_name": "Search",
+      "description": "Open the search page",
+      "url": "/search",
+      "icons": [{ "src": "icons/search.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Upload Document",
+      "short_name": "Upload",
+      "description": "Upload a new document",
+      "url": "/documents/upload",
+      "icons": [{ "src": "icons/upload.png", "sizes": "96x96" }]
+    }
+  ]
+}

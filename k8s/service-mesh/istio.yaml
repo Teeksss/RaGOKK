@@ -1,0 +1,184 @@
+# Last reviewed: 2025-04-29 13:59:34 UTC (User: TeeksssAPI)
+# Istio Service Mesh için Kubernetes yapılandırması
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: ragbase-istiocontrolplane
+  namespace: istio-system
+spec:
+  profile: default
+  components:
+    egressGateways:
+    - name: istio-egressgateway
+      enabled: true
+    ingressGateways:
+    - name: istio-ingressgateway
+      enabled: true
+  meshConfig:
+    accessLogFile: /dev/stdout
+    enableTracing: true
+    defaultConfig:
+      tracing:
+        sampling: 100.0
+        zipkin:
+          address: jaeger-collector.observability:9411
+    outboundTrafficPolicy:
+      mode: ALLOW_ANY
+  values:
+    global:
+      proxy:
+        holdApplicationUntilProxyStarts: true
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: ragbase-gateway
+  namespace: ragbase
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "ragbase.example.com"
+    - "api.ragbase.example.com"
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: ragbase-tls-cert
+    hosts:
+    - "ragbase.example.com"
+    - "api.ragbase.example.com"
+---
+# Virtual Service yapılandırması
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ragbase-virtualservice
+  namespace: ragbase
+spec:
+  hosts:
+  - "ragbase.example.com"
+  - "api.ragbase.example.com"
+  gateways:
+  - ragbase-gateway
+  http:
+  # Frontend hizmeti
+  - match:
+    - uri:
+        prefix: /
+      authority:
+        exact: ragbase.example.com
+    route:
+    - destination:
+        host: ragbase-frontend-service
+        port:
+          number: 80
+  # API hizmetleri
+  - match:
+    - uri:
+        prefix: /api/v1/auth
+    route:
+    - destination:
+        host: ragbase-auth-service
+        port:
+          number: 8000
+  - match:
+    - uri:
+        prefix: /api/v1/documents
+    route:
+    - destination:
+        host: ragbase-document-service
+        port:
+          number: 8000
+  - match:
+    - uri:
+        prefix: /api/v1/search
+    route:
+    - destination:
+        host: ragbase-search-service
+        port:
+          number: 8000
+  - match:
+    - uri:
+        prefix: /api/v1/admin
+    route:
+    - destination:
+        host: ragbase-admin-service
+        port:
+          number: 8000
+  # mTLS politikası - servisler arası güvenli iletişim
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: ragbase-peer-authentication
+  namespace: ragbase
+spec:
+  mtls:
+    mode: STRICT
+---
+# Circuit Breaker yapılandırması
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: ragbase-circuit-breaker
+  namespace: ragbase
+spec:
+  host: ragbase-document-service
+  trafficPolicy:
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 60s
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 3s
+      http:
+        http1MaxPendingRequests: 100
+        maxRequestsPerConnection: 10
+---
+# Canary deployment yapılandırması
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: ragbase-canary
+  namespace: ragbase
+spec:
+  hosts:
+  - ragbase-search-service
+  http:
+  - match:
+    - headers:
+        x-canary:
+          exact: "true"
+    route:
+    - destination:
+        host: ragbase-search-service
+        subset: v2
+  - route:
+    - destination:
+        host: ragbase-search-service
+        subset: v1
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: ragbase-search-subsets
+  namespace: ragbase
+spec:
+  host: ragbase-search-service
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
