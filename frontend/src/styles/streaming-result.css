@@ -1,0 +1,72 @@
+/* Last reviewed: 2025-04-30 07:12:47 UTC (User: Teeksss) */
+
+/* Streaming Yanıt Stilleri */
+.streaming-query-result .answer-content {
+  font-size: 1rem;
+  line-height: 1.6;
+  position: relative;
+  transition: background-color 0.3s ease;
+}
+
+/* Kaynak vurgulama */
+.streaming-query-result .highlight-source-1 {
+  background-color: rgba(0, 123, 255, 0.05);
+  border-left: 3px solid #007bff;
+  padding-left: 10px;
+}
+
+.streaming-query-result .highlight-source-2 {
+  background-color: rgba(40, 167, 69, 0.05);
+  border-left: 3px solid #28a745;
+  padding-left: 10px;
+}
+
+.streaming-query-result .highlight-source-3 {
+  background-color: rgba(220, 53, 69, 0.05);
+  border-left: 3px solid #dc3545;
+  padding-left: 10px;
+}
+
+.streaming-query-result .highlight-source-4 {
+  background-color: rgba(255, 193, 7, 0.05);
+  border-left: 3px solid #ffc107;
+  padding-left: 10px;
+}
+
+.streaming-query-result .highlight-source-5 {
+  background-color: rgba(23, 162, 184, 0.05);
+  border-left: 3px solid #17a2b8;
+  padding-left: 10px;
+}
+
+/* Kaynaklar */
+.source-reference {
+  cursor: pointer;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+/* Animasyon */
+.streaming-query-result .streaming-cursor::after {
+  content: "|";
+  animation: cursor-blink 1s step-start infinite;
+}
+
+@keyframes cursor-blink {
+  50% { opacity: 0; }
+}
+
+/* Referans listesi */
+.current-references {
+  padding: 10px;
+  border-radius: 5px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+}
+
+.source-indicator {
+  padding: 5px 10px;
+  background-color: #f0f7ff;
+  border-radius: 5px;
+  border-left: 3px solid #007bff;
+}

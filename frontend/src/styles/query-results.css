@@ -1,0 +1,148 @@
+/* Last reviewed: 2025-04-30 06:02:16 UTC (User: Teeksss) */
+
+/* Sorgu Sonuçları Görselleştirmesi */
+.query-result {
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.query-result:hover {
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1) !important;
+}
+
+.query-question {
+  color: #343a40;
+}
+
+.query-answer {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #212529;
+}
+
+/* Markdown içeriği için stiller */
+.markdown-content {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+}
+
+.markdown-content h1 {
+  font-size: 1.75rem;
+}
+
+.markdown-content h2 {
+  font-size: 1.5rem;
+}
+
+.markdown-content h3 {
+  font-size: 1.25rem;
+}
+
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  font-size: 1.1rem;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  padding-left: 1.5rem;
+}
+
+.markdown-content code {
+  background-color: #f5f5f5;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 85%;
+}
+
+.markdown-content pre {
+  background-color: #f5f5f5;
+  padding: 1rem;
+  border-radius: 0.375rem;
+  overflow-x: auto;
+}
+
+.markdown-content pre code {
+  padding: 0;
+  background-color: transparent;
+}
+
+.markdown-content blockquote {
+  border-left: 4px solid #ced4da;
+  margin: 0;
+  padding: 0.5rem 1rem;
+  color: #6c757d;
+}
+
+.markdown-content img {
+  max-width: 100%;
+  height: auto;
+}
+
+.markdown-content table {
+  border-collapse: collapse;
+  margin-bottom: 1rem;
+  width: 100%;
+}
+
+.markdown-content table th,
+.markdown-content table td {
+  border: 1px solid #dee2e6;
+  padding: 0.5rem;
+}
+
+.markdown-content table thead th {
+  background-color: #f8f9fa;
+}
+
+/* Kaynak referansları için stiller */
+.source-reference {
+  cursor: pointer;
+  padding: 0.1rem 0.2rem;
+  border-radius: 0.2rem;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.source-reference:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Kaynak kartları için stiller */
+.source-card {
+  transition: transform 0.2s ease;
+}
+
+.source-card:hover {
+  transform: translateY(-2px);
+}
+
+.source-content {
+  font-size: 0.95rem;
+  max-height: 150px;
+  overflow-y: auto;
+  background-color: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  white-space: pre-wrap;
+}
+
+/* Kaynak sayı vurgulaması */
+.source-number {
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+/* Mobil uyumluluk için */
+@media (max-width: 767.98px) {
+  .query-answer {
+    font-size: 0.95rem;
+  }
+  
+  .source-content {
+    max-height: 100px;
+    font-size: 0.9rem;
+  }
+}
