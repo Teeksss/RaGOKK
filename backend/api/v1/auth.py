@@ -1,461 +1,361 @@
-# Last reviewed: 2025-04-29 14:12:11 UTC (User: TeeksssKullanıcı)
-from fastapi import APIRouter, Depends, HTTPException, status, Body
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+# Last reviewed: 2025-04-30 05:36:04 UTC (User: TeeksssJWT)
+from fastapi import APIRouter, Depends, HTTPException, status, Body, Request, Response
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
+from datetime import datetime, timedelta, timezone
 import logging
-from datetime import datetime, timedelta
 
 from ...db.session import get_db
-from ...schemas.user import UserCreate, User, TokenResponse, UserUpdate, UserPasswordUpdate
-from ...repositories.user_repository import UserRepository
-from ...auth.jwt import create_access_token, create_refresh_token, decode_token, get_current_active_user
-from ...auth.password import verify_password, get_password_hash
-from ...services.audit_service import AuditService, AuditLogType
-
-router = APIRouter(
-    prefix="/api/auth",
-    tags=["authentication"],
-    responses={401: {"description": "Unauthorized"}}
+from ...schemas.user import UserCreate, UserResponse, TokenResponse, RefreshTokenRequest
+from ...services.user_service import UserService
+from ...auth.jwt import (
+    authenticate_user, create_access_token, create_refresh_token,
+    save_refresh_token, revoke_refresh_token, get_current_active_user,
+    use_refresh_token, get_token_from_cookie_or_header
 )
+from ...core.config import settings
+from ...services.audit_service import AuditService, AuditLogType
+from ...core.exceptions import AuthenticationError, ErrorCode
 
+router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
 audit_service = AuditService()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
-
-@router.post("/register", response_model=User)
-async def register(
-    user: UserCreate,
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def register_user(
+    user_in: UserCreate,
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Yeni bir kullanıcı kaydeder
-    
-    - **email**: E-posta adresi
-    - **password**: Şifre
-    - **username**: Kullanıcı adı
-    - **full_name**: Tam ad
+    Yeni bir kullanıcı kaydı oluşturur
     """
-    user_repo = UserRepository()
-    
-    # E-posta veya kullanıcı adı mevcut mu kontrol et
-    db_user = await user_repo.get_user_by_email(db, user.email)
-    if db_user:
-        await audit_service.log_event(
-            event_type=AuditLogType.AUTH,
-            action="register",
-            status="failure",
-            details={"reason": "Email already registered", "email": user.email},
-            db=db
-        )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
-    
-    if user.username:
-        db_user = await user_repo.get_user_by_username(db, user.username)
-        if db_user:
-            await audit_service.log_event(
-                event_type=AuditLogType.AUTH,
-                action="register",
-                status="failure",
-                details={"reason": "Username already exists", "username": user.username},
-                db=db
-            )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already exists"
-            )
-    
-    # Şifreyi hashle
-    hashed_password = get_password_hash(user.password)
-    
-    # Kullanıcıyı oluştur
-    db_user = await user_repo.create_user(
-        db=db,
-        email=user.email,
-        password=hashed_password,
-        username=user.username,
-        full_name=user.full_name
-    )
-    
-    await db.commit()
-    await db.refresh(db_user)
-    
-    # Audit log kaydı
-    await audit_service.log_event(
-        event_type=AuditLogType.AUTH,
-        user_id=str(db_user.id),
-        action="register",
-        resource_type="user",
-        resource_id=str(db_user.id),
-        status="success",
-        db=db
-    )
-    
-    return db_user
-
-@router.post("/login", response_model=TokenResponse)
-async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Kullanıcı adı ve şifre ile giriş yapar ve JWT token döndürür
-    
-    - **username**: E-posta adresi veya kullanıcı adı
-    - **password**: Şifre
-    
-    Returns: JWT token ve kullanıcı bilgileri
-    """
-    user_repo = UserRepository()
-    
-    # E-posta veya kullanıcı adı ile kullanıcı bul
-    user = await user_repo.get_user_by_email(db, form_data.username)
-    if not user:
-        user = await user_repo.get_user_by_username(db, form_data.username)
-    
-    # Hatalı kullanıcı adı/şifre kontrolü
-    if not user or not verify_password(form_data.password, user.password):
-        await audit_service.log_event(
-            event_type=AuditLogType.AUTH,
-            action="login",
-            status="failure",
-            details={"reason": "Invalid username or password", "username": form_data.username},
-            db=db
-        )
-        
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email/username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # Kullanıcı aktif mi?
-    if not user.is_active:
-        await audit_service.log_event(
-            event_type=AuditLogType.AUTH,
-            user_id=str(user.id),
-            action="login",
-            resource_type="user",
-            resource_id=str(user.id),
-            status="failure",
-            details={"reason": "User is inactive"},
-            db=db
-        )
-        
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User account is disabled",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # Son giriş bilgisini güncelle
-    user.last_login = datetime.now()
-    await db.commit()
-    
-    # Token oluştur
-    access_token = create_access_token(
-        data={"sub": user.email, "user_id": str(user.id)}
-    )
-    
-    refresh_token = create_refresh_token(
-        data={"sub": user.email, "user_id": str(user.id)}
-    )
-    
-    # Audit log kaydı
-    await audit_service.log_event(
-        event_type=AuditLogType.AUTH,
-        user_id=str(user.id),
-        action="login",
-        resource_type="user",
-        resource_id=str(user.id),
-        status="success",
-        db=db
-    )
-    
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-        "expires_in": 3600,
-        "user": {
-            "id": str(user.id),
-            "email": user.email,
-            "username": user.username,
-            "full_name": user.full_name,
-            "is_active": user.is_active,
-            "is_superuser": user.is_superuser,
-            "created_at": user.created_at,
-            "organization_id": str(user.organization_id) if user.organization_id else None
-        }
-    }
-
-@router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(
-    refresh_token: str = Body(..., embed=True),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Refresh token ile yeni bir access token oluşturur
-    
-    - **refresh_token**: Geçerli bir refresh token
-    
-    Returns: Yeni JWT token ve kullanıcı bilgileri
-    """
-    user_repo = UserRepository()
+    user_service = UserService(db)
     
     try:
-        # Token'ı doğrula
-        payload = decode_token(refresh_token)
-        email: str = payload.get("sub")
-        user_id: str = payload.get("user_id")
+        # Kullanıcı kayıt bilgilerini kontrol et
+        await user_service.validate_registration_data(user_in)
         
-        if not email or not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid refresh token format",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        # Kullanıcıyı bul
-        user = await user_repo.get_user_by_email(db, email)
-        
-        if not user or str(user.id) != user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User not found",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User is inactive",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
-        
-        # Yeni tokenları oluştur
-        access_token = create_access_token(
-            data={"sub": user.email, "user_id": str(user.id)}
-        )
-        new_refresh_token = create_refresh_token(
-            data={"sub": user.email, "user_id": str(user.id)}
-        )
+        # Kullanıcıyı oluştur
+        user = await user_service.create_user(user_in)
         
         # Audit log kaydı
         await audit_service.log_event(
-            event_type=AuditLogType.AUTH,
+            event_type=AuditLogType.USER,
             user_id=str(user.id),
-            action="refresh_token",
+            action="register",
             resource_type="user",
             resource_id=str(user.id),
             status="success",
             db=db
         )
         
-        return {
-            "access_token": access_token,
-            "refresh_token": new_refresh_token,
-            "token_type": "bearer",
-            "expires_in": 3600,
-            "user": {
-                "id": str(user.id),
-                "email": user.email,
-                "username": user.username,
-                "full_name": user.full_name,
-                "is_active": user.is_active,
-                "is_superuser": user.is_superuser,
-                "created_at": user.created_at,
-                "organization_id": str(user.organization_id) if user.organization_id else None
-            }
-        }
-    
+        return user
     except Exception as e:
-        logger.error(f"Token refresh error: {e}")
-        
-        # Audit log kaydı
+        # Audit log kaydı - başarısız
+        await audit_service.log_event(
+            event_type=AuditLogType.USER,
+            user_id=None,
+            action="register",
+            resource_type="user",
+            status="failure",
+            details={"error": str(e), "email": user_in.email},
+            db=db
+        )
+        raise
+
+@router.post("/token", response_model=TokenResponse)
+async def login_for_access_token(
+    response: Response,
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    OAuth2 uyumlu JWT token oluşturur
+    
+    - **username**: Email adresi (form-data)
+    - **password**: Şifre (form-data)
+    """
+    # Kullanıcıyı doğrula
+    user = await authenticate_user(db, form_data.username, form_data.password)
+    
+    if not user:
+        # Audit log kaydı - başarısız giriş
         await audit_service.log_event(
             event_type=AuditLogType.AUTH,
-            action="refresh_token",
+            user_id=None,
+            action="login",
             status="failure",
-            details={"error": str(e)},
+            details={"email": form_data.username, "reason": "invalid_credentials"},
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
             db=db
         )
         
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token",
-            headers={"WWW-Authenticate": "Bearer"},
+        raise AuthenticationError(
+            message="Incorrect email or password",
+            error_code=ErrorCode.INVALID_CREDENTIALS
         )
+    
+    # Kullanıcı rollerini al
+    user_roles = [role.code for role in user.roles]
+    
+    # Access token oluştur
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_data = {
+        "sub": str(user.id),
+        "roles": user_roles,
+        "is_superuser": user.is_superuser
+    }
+    access_token = create_access_token(
+        subject=access_token_data,
+        expires_delta=access_token_expires
+    )
+    
+    # Refresh token oluştur
+    refresh_token = create_refresh_token()
+    refresh_token_expires = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    
+    # Refresh token'ı veritabanına kaydet
+    await save_refresh_token(
+        db=db,
+        user_id=str(user.id),
+        refresh_token=refresh_token,
+        expires_at=refresh_token_expires,
+        request=request
+    )
+    
+    # Refresh token'ı güvenli bir çerez olarak ayarla
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,  # HTTPS üzerinde True olmalı
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        path="/api/v1/auth/refresh"  # Sadece refresh endpoint için gönder
+    )
+    
+    # Audit log kaydı - başarılı giriş
+    await audit_service.log_event(
+        event_type=AuditLogType.AUTH,
+        user_id=str(user.id),
+        action="login",
+        status="success",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        db=db
+    )
+    
+    # Token ve kullanıcı bilgilerini döndür
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "user": {
+            "id": str(user.id),
+            "email": user.email,
+            "username": user.username,
+            "full_name": user.full_name,
+            "is_superuser": user.is_superuser,
+            "roles": user_roles,
+            "organization_id": str(user.organization_id) if user.organization_id else None
+        }
+    }
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_access_token(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    refresh_token: str = Depends(get_token_from_cookie_or_header)
+):
+    """
+    Refresh token kullanarak yeni bir access token oluşturur
+    
+    Refresh token header (Bearer) veya cookie olarak gönderilebilir
+    """
+    if not refresh_token:
+        raise AuthenticationError(
+            message="Refresh token is missing",
+            error_code=ErrorCode.INVALID_TOKEN
+        )
+    
+    # Refresh token ile kullanıcıyı bul
+    user = await use_refresh_token(db, refresh_token)
+    
+    if not user:
+        # Audit log kaydı - geçersiz refresh token
+        await audit_service.log_event(
+            event_type=AuditLogType.AUTH,
+            user_id=None,
+            action="refresh_token",
+            status="failure",
+            details={"reason": "invalid_refresh_token"},
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            db=db
+        )
+        
+        # Geçersiz token çerezini temizle
+        response.delete_cookie(key="refresh_token", path="/api/v1/auth/refresh")
+        
+        raise AuthenticationError(
+            message="Invalid or expired refresh token",
+            error_code=ErrorCode.INVALID_TOKEN
+        )
+    
+    # Kullanıcı rollerini al
+    user_roles = [role.code for role in user.roles]
+    
+    # Yeni access token oluştur
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_data = {
+        "sub": str(user.id),
+        "roles": user_roles,
+        "is_superuser": user.is_superuser
+    }
+    access_token = create_access_token(
+        subject=access_token_data,
+        expires_delta=access_token_expires
+    )
+    
+    # Yeni refresh token oluştur (token rotasyonu)
+    new_refresh_token = create_refresh_token()
+    refresh_token_expires = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    
+    # Eski token'ı iptal et
+    await revoke_refresh_token(db, refresh_token)
+    
+    # Yeni refresh token'ı veritabanına kaydet
+    await save_refresh_token(
+        db=db,
+        user_id=str(user.id),
+        refresh_token=new_refresh_token,
+        expires_at=refresh_token_expires,
+        request=request
+    )
+    
+    # Yeni refresh token'ı çerez olarak ayarla
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh_token,
+        httponly=True,
+        secure=settings.COOKIE_SECURE,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        path="/api/v1/auth/refresh"
+    )
+    
+    # Audit log kaydı - başarılı token yenileme
+    await audit_service.log_event(
+        event_type=AuditLogType.AUTH,
+        user_id=str(user.id),
+        action="refresh_token",
+        status="success",
+        ip_address=request.client.host if request.client else None,
+        user_agent=request.headers.get("user-agent"),
+        db=db
+    )
+    
+    # Token ve kullanıcı bilgilerini döndür
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "user": {
+            "id": str(user.id),
+            "email": user.email,
+            "username": user.username,
+            "full_name": user.full_name,
+            "is_superuser": user.is_superuser,
+            "roles": user_roles,
+            "organization_id": str(user.organization_id) if user.organization_id else None
+        }
+    }
 
 @router.post("/logout")
 async def logout(
+    request: Request,
+    response: Response,
     current_user: Dict[str, Any] = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
+    refresh_token: Optional[str] = Depends(get_token_from_cookie_or_header),
+    db: AsyncSession = Depends(get_db),
+    revoke_all: bool = Body(False)
 ):
     """
     Kullanıcı oturumunu sonlandırır
     
-    Not: JWT token bazlı sistemlerde, token sunucuda iptal edilemez
-    Bu endpoint yalnızca istemci tarafında token'ın silinmesi için kullanılır
-    Ayrıca audit log kaydı oluşturur
+    - Mevcut refresh token iptal edilir
+    - revoke_all=True ise, kullanıcının tüm cihazlarda/tarayıcılarda oturumu sonlandırılır
     """
-    # Audit log kaydı
-    await audit_service.log_event(
-        event_type=AuditLogType.AUTH,
-        user_id=current_user["id"],
-        action="logout",
-        resource_type="user",
-        resource_id=current_user["id"],
-        status="success",
-        db=db
-    )
-    
-    return {"message": "Successfully logged out"}
-
-@router.get("/me", response_model=User)
-async def get_current_user_info(
-    current_user: Dict[str, Any] = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Mevcut oturum açmış kullanıcının bilgilerini döndürür
-    """
-    user_repo = UserRepository()
-    user = await user_repo.get_user_by_id(db, current_user["id"])
-    
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    return user
-
-@router.put("/me", response_model=User)
-async def update_user_info(
-    user_update: UserUpdate,
-    current_user: Dict[str, Any] = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Mevcut kullanıcının bilgilerini günceller
-    
-    - **full_name**: Yeni tam ad
-    - **username**: Yeni kullanıcı adı (opsiyonel)
-    - **email**: Yeni e-posta (opsiyonel)
-    """
-    user_repo = UserRepository()
-    
-    # Kullanıcıyı bul
-    user = await user_repo.get_user_by_id(db, current_user["id"])
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    # E-posta güncellenecekse, mevcut mu kontrol et
-    if user_update.email and user_update.email != user.email:
-        db_user = await user_repo.get_user_by_email(db, user_update.email)
-        if db_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
-            )
-    
-    # Kullanıcı adı güncellenecekse, mevcut mu kontrol et
-    if user_update.username and user_update.username != user.username:
-        db_user = await user_repo.get_user_by_username(db, user_update.username)
-        if db_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already exists"
-            )
-    
-    # Kullanıcıyı güncelle
-    updated_user = await user_repo.update_user(
-        db=db,
-        user_id=user.id,
-        email=user_update.email,
-        username=user_update.username,
-        full_name=user_update.full_name
-    )
-    
-    await db.commit()
-    await db.refresh(updated_user)
-    
-    # Audit log kaydı
-    await audit_service.log_event(
-        event_type=AuditLogType.DATA,
-        user_id=str(user.id),
-        action="update",
-        resource_type="user",
-        resource_id=str(user.id),
-        status="success",
-        db=db
-    )
-    
-    return updated_user
-
-@router.put("/me/password")
-async def change_password(
-    password_update: UserPasswordUpdate,
-    current_user: Dict[str, Any] = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Mevcut kullanıcının şifresini günceller
-    
-    - **current_password**: Mevcut şifre
-    - **new_password**: Yeni şifre
-    """
-    user_repo = UserRepository()
-    
-    # Kullanıcıyı bul
-    user = await user_repo.get_user_by_id(db, current_user["id"])
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    # Mevcut şifre doğru mu?
-    if not verify_password(password_update.current_password, user.password):
-        # Audit log kaydı - başarısız
+    try:
+        # Belirli bir refresh token iptal edilecekse
+        if refresh_token:
+            await revoke_refresh_token(db, refresh_token)
+        
+        # Tüm token'lar iptal edilecekse
+        if revoke_all:
+            await revoke_all_user_tokens(db, current_user["id"])
+        
+        # Refresh token çerezini temizle
+        response.delete_cookie(key="refresh_token", path="/api/v1/auth/refresh")
+        
+        # Audit log kaydı
         await audit_service.log_event(
             event_type=AuditLogType.AUTH,
-            user_id=str(user.id),
-            action="change_password",
-            resource_type="user",
-            resource_id=str(user.id),
+            user_id=current_user["id"],
+            action="logout",
+            status="success",
+            details={"revoke_all": revoke_all},
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
+            db=db
+        )
+        
+        return {"message": "Successfully logged out"}
+        
+    except Exception as e:
+        logger.error(f"Error during logout: {str(e)}")
+        
+        # Audit log kaydı - başarısız çıkış
+        await audit_service.log_event(
+            event_type=AuditLogType.AUTH,
+            user_id=current_user["id"],
+            action="logout",
             status="failure",
-            details={"reason": "Incorrect current password"},
+            details={"error": str(e)},
+            ip_address=request.client.host if request.client else None,
+            user_agent=request.headers.get("user-agent"),
             db=db
         )
         
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Incorrect current password"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error during logout: {str(e)}"
+        )
+
+@router.get("/me", response_model=UserResponse)
+async def read_users_me(
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Mevcut kimliği doğrulanmış kullanıcının bilgilerini döndürür
+    """
+    user_service = UserService(db)
+    user = await user_service.get_user_by_id(current_user["id"])
+    
+    # Kullanıcı bulunamazsa (nadiren olsa da önlem amaçlı)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
         )
     
-    # Şifreyi güncelle
-    hashed_password = get_password_hash(password_update.new_password)
-    user.password = hashed_password
-    await db.commit()
+    # Kullanıcı rollerini ekle
+    user_data = user.to_dict()
+    user_data["roles"] = [role.code for role in user.roles]
     
-    # Audit log kaydı - başarılı
-    await audit_service.log_event(
-        event_type=AuditLogType.AUTH,
-        user_id=str(user.id),
-        action="change_password",
-        resource_type="user",
-        resource_id=str(user.id),
-        status="success",
-        db=db
-    )
-    
-    return {"message": "Password updated successfully"}
+    return user_data

@@ -1,257 +1,512 @@
-/* Last reviewed: 2025-04-29 13:36:58 UTC (User: TeeksssMobil) */
+/* Last reviewed: 2025-04-30 05:22:47 UTC (User: Teeksss) */
+/* RAG Base Responsive Design Styles */
 
-/* Responsive taslak */
-.app-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
+/* Mobil cihaz sınırları */
+/* - Küçük Cep Telefonları: < 576px (xs) */
+/* - Cep Telefonları: >= 576px (sm) */
+/* - Tabletler: >= 768px (md) */
+/* - Küçük Laptoplar: >= 992px (lg) */
+/* - Büyük Ekranlar: >= 1200px (xl) */
+/* - Ekstra Büyük Ekranlar: >= 1400px (xxl) */
+
+/* Ana Container Boyutlandırması */
+.container-fluid {
   width: 100%;
+  padding-right: var(--bs-gutter-x, 0.75rem);
+  padding-left: var(--bs-gutter-x, 0.75rem);
+  margin-right: auto;
+  margin-left: auto;
 }
 
-.navbar {
-  height: 60px;
-  width: 100%;
-  z-index: 1000;
-  position: fixed;
-  top: 0;
+/* Mobil öncelikli yaklaşım için genel ayarlar */
+html, body {
+  font-size: 16px;
+  overscroll-behavior-y: none; /* iOS elastik kaydırmayı engelle */
 }
 
-.app-content {
-  display: flex;
-  flex: 1;
-  margin-top: 60px;
-  height: calc(100vh - 60px);
-}
-
-.sidebar {
-  width: 280px;
-  height: 100%;
-  position: fixed;
-  left: 0;
-  top: 60px;
-  z-index: 900;
-  transition: transform 0.3s ease;
-}
-
-.main-content {
-  width: 100%;
-  padding: 1rem;
-  overflow-y: auto;
-  transition: margin-left 0.3s ease;
-}
-
-.main-content.with-sidebar {
-  margin-left: 280px;
-  width: calc(100% - 280px);
-}
-
-/* Mobil ayarlar */
-@media (max-width: 768px) {
-  .sidebar {
-    transform: translateX(-100%);
-    box-shadow: none;
+@media (max-width: 576px) {
+  html, body {
+    font-size: 14px;
   }
+}
 
-  .sidebar.open {
-    transform: translateX(0);
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+/* Dokunmatik hedef boyutu - erişilebilirlik için en az 44x44px olmalı */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Mobilde her zaman tam genişlik */
+.full-width-mobile {
+  width: 100% !important;
+}
+
+/* Navbar için mobil optimizasyonlar */
+@media (max-width: 991.98px) {
+  .navbar {
+    padding: 0.5rem 1rem;
   }
   
-  .sidebar-overlay {
+  .navbar-brand {
+    font-size: 1.25rem;
+    margin-right: 0;
+  }
+
+  .navbar .btn {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.875rem;
+  }
+  
+  .dropdown-menu {
+    position: absolute;
+    width: 100vw;
+    left: 0;
+    border-radius: 0;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* Sidebar Responsif Davranış */
+.sidebar {
+  /* Varsayılan davranış: geniş ekranda sabit */
+  min-height: calc(100vh - 56px);
+  transition: all 0.3s ease-in-out;
+}
+
+@media (max-width: 991.98px) {
+  .sidebar {
     position: fixed;
-    top: 60px;
+    top: 56px;
+    left: -270px; /* Varsayılan olarak gizli */
+    width: 270px;
+    height: calc(100vh - 56px);
+    z-index: 1030;
+    background: var(--bs-body-bg);
+    box-shadow: 5px 0 15px rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
+  }
+
+  .sidebar.show {
+    left: 0; /* Sidebar gösterildiğinde */
+  }
+  
+  /* Sidebar gösteriliyor ise ana içerik alanını kaydır */
+  .main-content {
+    transition: margin 0.3s ease-in-out;
+  }
+  
+  .sidebar.show + .main-content {
+    margin-left: 270px;
+    width: calc(100vw - 270px);
+  }
+  
+  /* Sidebar gösterildiğinde arka plan overlay */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 56px;
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 800;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1025;
   }
   
-  .sidebar-overlay.active {
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  .main-content {
-    margin-left: 0 !important;
-    width: 100% !important;
-  }
-}
-
-/* Responsive kartlar */
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
-}
-
-@media (max-width: 640px) {
-  .card-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* Responsive tablolar */
-.table-responsive {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-@media (max-width: 768px) {
-  .table-responsive {
+  .sidebar.show ~ .sidebar-overlay {
     display: block;
-    width: 100%;
-  }
-  
-  .table-responsive thead {
-    display: none;
-  }
-  
-  .table-responsive tbody tr {
-    display: block;
-    margin-bottom: 1rem;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.5rem;
-  }
-  
-  .table-responsive tbody td {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem;
-    border-bottom: 1px solid #e2e8f0;
-  }
-  
-  .table-responsive tbody td:last-child {
-    border-bottom: none;
-  }
-  
-  .table-responsive tbody td:before {
-    content: attr(data-label);
-    font-weight: 600;
-    margin-right: 1rem;
   }
 }
 
-/* Form elemanları */
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1rem;
-}
-
-@media (max-width: 768px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.form-group {
+/* Kart bileşeni için mobil optimizasyonlar */
+.card {
   margin-bottom: 1rem;
 }
 
-.form-label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-}
-
-.form-control {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.25rem;
-}
-
-/* Bottombar (mobil için) */
-.bottombar {
-  display: none;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 60px;
-  background-color: #fff;
-  border-top: 1px solid #e2e8f0;
-  z-index: 1000;
-  justify-content: space-around;
-  align-items: center;
-  padding: 0 1rem;
-}
-
-@media (max-width: 768px) {
-  .bottombar {
-    display: flex;
+@media (max-width: 767.98px) {
+  .card-title {
+    font-size: 1.25rem;
   }
   
-  .app-content {
-    padding-bottom: 60px;
+  .card-body {
+    padding: 1rem;
   }
 }
 
-/* Touch Alanları */
-@media (max-width: 768px) {
-  .touch-target {
-    min-height: 44px;
-    min-width: 44px;
+/* Form elemanları için mobil optimizasyonlar */
+@media (max-width: 767.98px) {
+  .form-control, .form-select, .input-group {
+    margin-bottom: 0.75rem;
+  }
+  
+  .form-label {
+    margin-bottom: 0.25rem;
+  }
+  
+  /* Dokunmatik cihazlar için büyük form elemanları */
+  .form-control, .form-select, .btn, .input-group-text {
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    min-height: 44px; /* Dokunmatik hedef boyutu */
+  }
+}
+
+/* Tablo bileşenleri için mobil optimizasyonlar */
+@media (max-width: 991.98px) {
+  /* Responsive tablo */
+  .table-responsive {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Mobil tablet için küçük yazı boyutu */
+  .table {
+    font-size: 0.875rem;
+  }
+  
+  .table th, .table td {
+    padding: 0.5rem;
+    white-space: nowrap;
+  }
+}
+
+/* Mobil scroll geliştirmeleri */
+@media (max-width: 767.98px) {
+  /* Yatay kaydırılabilir konteynerler */
+  .scroll-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+    margin-bottom: 1rem;
+  }
+  
+  /* Kaydırma çubuğu tasarımı */
+  .scroll-container::-webkit-scrollbar {
+    height: 4px;
+  }
+  
+  .scroll-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+  
+  .scroll-container::-webkit-scrollbar-thumb {
+    background: #888;
+  }
+}
+
+/* Modal bileşenleri için mobil optimizasyonlar */
+@media (max-width: 767.98px) {
+  .modal-dialog {
+    margin: 0.5rem;
+    max-width: calc(100% - 1rem);
+  }
+  
+  .modal-header {
+    padding: 0.75rem 1rem;
+  }
+  
+  .modal-body {
+    padding: 1rem;
+  }
+  
+  .modal-footer {
+    padding: 0.75rem 1rem;
+  }
+  
+  /* Modal başlığı için responsive yazı boyutu */
+  .modal-title {
+    font-size: 1.25rem;
+  }
+}
+
+/* Dokunmatik etkileşimler için optimize butonlar */
+@media (max-width: 767.98px) {
+  .btn {
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Buton grupları için dokunmatik optimizasyon */
+  .btn-group > .btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+  
+  /* Tam genişlik butonlar */
+  .btn-mobile-full {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Buton aralığı */
+  .btn + .btn:not(.btn-group .btn) {
+    margin-left: 0;
+    margin-top: 0.5rem;
+  }
+}
+
+/* İçerik düzeni için responsive yapılar */
+@media (max-width: 767.98px) {
+  /* Daraltılmış padding */
+  .container, .container-sm {
+    padding-right: 0.75rem;
+    padding-left: 0.75rem;
+  }
+  
+  /* Responsive margin ayarları */
+  .section {
+    margin-bottom: 1.5rem;
+  }
+  
+  /* Responsive yazı boyutu */
+  h1, .h1 {
+    font-size: 1.75rem;
+  }
+  
+  h2, .h2 {
+    font-size: 1.5rem;
+  }
+  
+  h3, .h3 {
+    font-size: 1.25rem;
+  }
+}
+
+/* RAG sonuçları için mobil görünüm */
+.rag-results-container {
+  overflow-x: hidden; 
+}
+
+@media (max-width: 767.98px) {
+  .rag-results-container {
+    padding: 0.75rem;
+  }
+  
+  .rag-answer {
+    font-size: 0.95rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .rag-sources {
+    font-size: 0.85rem;
+  }
+  
+  .rag-source-item {
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .rag-query-form .form-control {
+    font-size: 0.95rem;
+    padding: 0.75rem;
+  }
+}
+
+/* QueryHistory mobil görünümü */
+@media (max-width: 767.98px) {
+  .query-history-item {
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .query-history-text {
+    font-size: 0.875rem;
+    max-height: 2.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .query-history-date {
+    font-size: 0.75rem;
+  }
+}
+
+/* Dokunma optimizasyonu için bileşen aralarını arttırma */
+@media (max-width: 767.98px) {
+  .form-group, .form-check, .list-group-item {
+    margin-bottom: 1rem;
+  }
+  
+  /* Dokunmatik liste öğeleri */
+  .list-group-item {
+    padding: 0.75rem 1rem;
+  }
+  
+  /* Form kontrolleri için geniş dokunmatik alanlar */
+  .form-check-input {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: 0.25rem;
+  }
+  
+  .form-check-label {
+    padding-left: 0.5rem;
+    padding-top: 0.25rem;
+  }
+}
+
+/* Grafik alanları için mobil optimizasyon */
+@media (max-width: 767.98px) {
+  .chart-container {
+    height: 300px;
+  }
+}
+
+/* Analitik paneli için mobil optimizasyonlar */
+@media (max-width: 767.98px) {
+  .analytics-card {
+    margin-bottom: 1rem;
+  }
+  
+  .analytics-value {
+    font-size: 1.5rem;
+  }
+  
+  .analytics-label {
+    font-size: 0.85rem;
+  }
+  
+  .stat-change {
+    font-size: 0.75rem;
+  }
+}
+
+/* Rapor filtresi için mobil optimize ayarlar */
+@media (max-width: 767.98px) {
+  .filter-row {
+    flex-direction: column;
+  }
+  
+  .filter-row > div {
+    margin-bottom: 0.5rem;
+    width: 100%;
+  }
+}
+
+/* Mobil yukarı/aşağı hareket butonları */
+.mobile-nav-buttons {
+  display: none;
+}
+
+@media (max-width: 767.98px) {
+  .mobile-nav-buttons {
+    display: flex;
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 1000;
+  }
+  
+  .mobile-nav-button {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    background-color: rgba(var(--bs-primary-rgb), 0.8);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    margin-left: 0.5rem;
+    transition: all 0.2s ease;
   }
   
-  button, 
-  a.btn,
-  .form-control,
-  input[type="checkbox"],
-  input[type="radio"] {
-    min-height: 44px;
-  }
-  
-  input[type="checkbox"],
-  input[type="radio"] {
-    transform: scale(1.2);
+  .mobile-nav-button:active {
+    transform: scale(0.95);
   }
 }
 
-/* Erişilebilirlik */
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+/* Mobil sayfalamalı görünüm */
+@media (max-width: 767.98px) {
+  .mobile-paged-view .card {
+    margin-bottom: 0.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+  
+  .mobile-paged-view .pagination {
+    justify-content: center;
+    margin-top: 1rem;
+  }
+  
+  .mobile-paged-view .pagination .page-link {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
 }
 
-/* Karanlık mod */
-@media (prefers-color-scheme: dark) {
-  body:not(.light-theme) {
-    --bg-color: #1a202c;
-    --text-color: #e2e8f0;
-    --border-color: #4a5568;
-    --card-bg: #2d3748;
-    
-    background-color: var(--bg-color);
-    color: var(--text-color);
+/* Belge önizleme için mobil optimizasyon */
+@media (max-width: 767.98px) {
+  .document-preview-container {
+    height: auto;
+    max-height: 400px;
   }
   
-  body:not(.light-theme) .card,
-  body:not(.light-theme) .sidebar,
-  body:not(.light-theme) .navbar,
-  body:not(.light-theme) .bottombar {
-    background-color: var(--card-bg);
-    border-color: var(--border-color);
+  .document-thumbnail {
+    height: 100px;
+  }
+}
+
+/* Güvenli alan (notch, hole-punch vb) için ek padding */
+@supports(padding: max(0px)) {
+  .safe-area-padding {
+    padding-left: max(0.75rem, env(safe-area-inset-left));
+    padding-right: max(0.75rem, env(safe-area-inset-right));
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+}
+
+/* Kırıntı (breadcrumb) gezinme için mobil optimizasyon */
+@media (max-width: 767.98px) {
+  .breadcrumb {
+    white-space: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.5rem 0;
   }
   
-  body:not(.light-theme) .form-control {
-    background-color: #4a5568;
-    border-color: #2d3748;
-    color: #e2e8f0;
+  .breadcrumb::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .breadcrumb-item {
+    font-size: 0.875rem;
+  }
+}
+
+/* Küçük ekranlarda üst-alta yerleşim */
+@media (max-width: 767.98px) {
+  .stack-on-mobile {
+    flex-direction: column !important;
+  }
+  
+  .stack-on-mobile > * {
+    width: 100% !important;
+    margin-right: 0 !important;
+  }
+}
+
+/* Mobil cihazlarda gizlenen/gösterilen içerikler */
+.d-none-mobile {
+  display: initial;
+}
+
+.d-block-mobile {
+  display: none;
+}
+
+@media (max-width: 767.98px) {
+  .d-none-mobile {
+    display: none !important;
+  }
+  
+  .d-block-mobile {
+    display: block !important;
   }
 }

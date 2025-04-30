@@ -1,329 +1,322 @@
-# Last reviewed: 2025-04-29 14:12:11 UTC (User: TeeksssKullanıcı)
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form, Body, Query, Request, status
-from fastapi.responses import JSONResponse
+# Last reviewed: 2025-04-30 05:56:23 UTC (User: Teeksss)
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query, Path, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Dict, Any, Optional, List, Union
-import logging
+from typing import List, Dict, Any, Optional
+import os
 import uuid
+import shutil
 from datetime import datetime
+import logging
 
 from ...db.session import get_db
-from ...schemas.document import DocumentCreate, DocumentResponse, DocumentUpdate, DocumentListResponse
 from ...repositories.document_repository import DocumentRepository
-from ...services.document_service import DocumentService
-from ...services.storage_service import StorageService
+from ...schemas.document import DocumentCreate, DocumentResponse, DocumentList, DocumentUpdate
+from ...services.document_processor import DocumentProcessorService
+from ...core.config import settings
+from ...auth.jwt import get_current_active_user
 from ...services.audit_service import AuditService, AuditLogType
-from ...auth.jwt import get_current_active_user, get_current_user_optional
+from ...core.exceptions import NotFoundError, PermissionError
 
-router = APIRouter(
-    prefix="/api/documents",
-    tags=["documents"],
-    responses={401: {"description": "Unauthorized"}}
-)
-
+router = APIRouter(prefix="/documents", tags=["documents"])
 logger = logging.getLogger(__name__)
-document_service = DocumentService()
-storage_service = StorageService()
+
+document_repository = DocumentRepository()
+document_processor = DocumentProcessorService()
 audit_service = AuditService()
 
-@router.get("/", response_model=DocumentListResponse)
+@router.post("/", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+async def create_document(
+    title: str = Form(...),
+    file: UploadFile = File(...),
+    apply_ocr: bool = Form(False),  # OCR uygulanıp uygulanmayacağı
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Yeni bir belge yükler ve oluşturur
+    - **title**: Belge başlığı
+    - **file**: Yüklenecek dosya
+    - **apply_ocr**: OCR işlemi uygulansın mı? (varsayılan: False)
+    """
+    try:
+        # Yükleme dizinini oluştur (yoksa)
+        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+        
+        # Benzersiz dosya adı oluştur
+        file_extension = os.path.splitext(file.filename)[1]
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        file_path = os.path.join(settings.UPLOAD_DIR, unique_filename)
+        
+        # Dosyayı kaydet
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        
+        # Dosya hash'ini hesapla (kopya kontrolü için)
+        file_hash = await document_repository.calculate_file_hash(file_path)
+        
+        # Belge işleme
+        file_info = await document_processor.get_file_info(file_path)
+        file_type = file_info.get("file_type", "")
+        file_size = os.path.getsize(file_path)
+        
+        # OCR işlemi (isteğe bağlı)
+        content = ""
+        if apply_ocr:
+            content = await document_processor.extract_text_from_file(file_path, file_type)
+        else:
+            # OCR olmadan basit metin çıkarma
+            content = await document_processor.extract_basic_text(file_path, file_type)
+        
+        # Belgeyi veritabanına kaydet
+        document = await document_repository.create_document(
+            db=db,
+            title=title,
+            content=content,
+            file_path=file_path,
+            file_name=file.filename,
+            file_type=file_type,
+            file_size=file_size,
+            file_hash=file_hash,
+            metadata={
+                "original_filename": file.filename,
+                "upload_time": datetime.now().isoformat(),
+                "content_type": file.content_type,
+                "ocr_applied": apply_ocr
+            },
+            user_id=current_user["id"],
+            organization_id=current_user.get("organization_id")
+        )
+        
+        # Audit log
+        await audit_service.log_event(
+            event_type=AuditLogType.DATA,
+            user_id=current_user["id"],
+            action="create",
+            resource_type="document",
+            resource_id=str(document.id),
+            details={
+                "title": title, 
+                "file_name": file.filename,
+                "file_size": file_size,
+                "file_type": file_type,
+                "ocr_applied": apply_ocr
+            },
+            db=db
+        )
+        
+        return document
+        
+    except Exception as e:
+        # Hata durumunda dosyayı temizle
+        if 'file_path' in locals() and os.path.exists(file_path):
+            os.remove(file_path)
+        
+        # Aynı belge yüklenmeye çalışılıyorsa özel hata
+        if 'duplicate' in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A document with identical content already exists"
+            )
+        
+        logger.error(f"Error creating document: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@router.get("/{document_id}", response_model=DocumentResponse)
+async def get_document(
+    document_id: str = Path(...),
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Belirli bir belgeyi getirir
+    - **document_id**: Belge ID
+    """
+    try:
+        # Kullanıcı süper kullanıcı değilse ve farklı organizasyondan belge istiyorsa
+        # belge erişimini kısıtla
+        is_superuser = current_user.get("is_superuser", False)
+        
+        document = await document_repository.get_document_by_id(db, document_id)
+        
+        # Organizasyon kontrolü
+        if not is_superuser and document.organization_id != current_user.get("organization_id"):
+            raise PermissionError(
+                message="Permission denied",
+                error_code="INSUFFICIENT_PRIVILEGES",
+                detail="You don't have permission to access this document"
+            )
+        
+        # Audit log
+        await audit_service.log_event(
+            event_type=AuditLogType.ACCESS,
+            user_id=current_user["id"],
+            action="read",
+            resource_type="document",
+            resource_id=document_id,
+            db=db
+        )
+        
+        return document
+        
+    except NotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=e.message
+        )
+    except Exception as e:
+        logger.error(f"Error getting document: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_document(
+    document_id: str = Path(...),
+    force: bool = Query(False, description="Süper kullanıcılar için zorunlu silme"),
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Belgeyi siler
+    - **document_id**: Belge ID
+    - **force**: Süper kullanıcılar için zorunlu silme (sahibi olmasa bile)
+    """
+    try:
+        is_superuser = current_user.get("is_superuser", False)
+        
+        # Belgeyi getir (önce belgenin var olduğundan emin ol)
+        document = await document_repository.get_document_by_id(db, document_id)
+        
+        # Sadece belge sahibi veya süper kullanıcı silebilir
+        if not is_superuser and document.user_id != current_user["id"]:
+            raise PermissionError(
+                message="Permission denied",
+                error_code="INSUFFICIENT_PRIVILEGES",
+                detail="You don't have permission to delete this document"
+            )
+        
+        # Süper kullanıcı olmayan ve belgenin sahibi olmayan kullanıcılar silemez
+        check_owner = not is_superuser
+        
+        # Force parametresi sadece süper kullanıcılar için geçerlidir
+        if force and not is_superuser:
+            force = False
+            
+        await document_repository.delete_document(
+            db=db, 
+            document_id=document_id, 
+            check_owner=check_owner,
+            user_id=current_user["id"],
+            force=force
+        )
+        
+        # Audit log
+        await audit_service.log_event(
+            event_type=AuditLogType.DATA,
+            user_id=current_user["id"],
+            action="delete",
+            resource_type="document",
+            resource_id=document_id,
+            details={"title": document.title, "forced": force},
+            db=db
+        )
+        
+    except NotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=e.message
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=e.message
+        )
+    except Exception as e:
+        logger.error(f"Error deleting document: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
+
+@router.get("/", response_model=DocumentList)
 async def list_documents(
-    search: Optional[str] = Query(None, description="Search query for documents"),
-    tags: Optional[List[str]] = Query(None, description="Filter by tags"),
-    collection_id: Optional[str] = Query(None, description="Filter by collection"),
-    status: Optional[str] = Query(None, description="Filter by status"),
-    sort_by: str = Query("updated_at", description="Field to sort by"),
-    sort_dir: str = Query("desc", description="Sort direction (asc, desc)"),
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(20, ge=1, le=100, description="Results per page"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    search: Optional[str] = Query(None, description="Title or content search"),
+    file_type: Optional[str] = Query(None, description="File type filter"),
+    sort_by: str = Query("created_at", description="Field to sort by"),
+    sort_order: str = Query("desc", description="Sort order (asc or desc)"),
+    user_documents: bool = Query(False, description="Only show current user's documents"),
     current_user: Dict[str, Any] = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Belgeleri listeler
-    
-    Parametreler:
-    - **search**: Belge başlığı/içeriğinde arama yapmak için sorgu
-    - **tags**: Etiketlere göre filtreleme
-    - **collection_id**: Koleksiyona göre filtreleme
-    - **status**: Duruma göre filtreleme
-    - **sort_by**: Sıralama alanı (title, created_at, updated_at, vb.)
-    - **sort_dir**: Sıralama yönü (asc, desc)
-    - **page**: Sayfa numarası
-    - **page_size**: Sayfa başına sonuç sayısı
-    
-    Dönüş:
-    - DocumentListResponse: Belge listesi ve meta veriler
+    - **skip**: Atlanacak belge sayısı
+    - **limit**: Maksimum belge sayısı
+    - **search**: Başlık veya içerik araması
+    - **file_type**: Dosya türüne göre filtreleme
+    - **sort_by**: Sıralama alanı
+    - **sort_order**: Sıralama yönü (asc veya desc)
+    - **user_documents**: Sadece mevcut kullanıcının belgelerini göster
     """
     try:
-        # Belgeleri getir
-        documents = await document_service.list_documents(
+        # Kullanıcı yetkilerine göre filtrele
+        is_superuser = current_user.get("is_superuser", False)
+        
+        user_id = None
+        organization_id = current_user.get("organization_id")
+        
+        # Sadece kullanıcı belgeleri isteniyorsa
+        if user_documents:
+            user_id = current_user["id"]
+        
+        # Süper kullanıcılar tüm belgeleri görebilir
+        if is_superuser:
+            organization_id = None
+        
+        # Belgeleri listele
+        result = await document_repository.list_documents(
             db=db,
-            user_id=current_user["id"],
-            search=search,
-            tags=tags,
-            collection_id=collection_id,
-            status=status,
+            skip=skip,
+            limit=limit,
+            user_id=user_id,
+            organization_id=organization_id,
+            search_term=search,
+            file_type=file_type,
             sort_by=sort_by,
-            sort_dir=sort_dir,
-            page=page,
-            page_size=page_size
+            sort_order=sort_order
         )
         
-        # Audit log kaydı
+        # Audit log
         await audit_service.log_event(
-            event_type=AuditLogType.DATA,
+            event_type=AuditLogType.ACCESS,
             user_id=current_user["id"],
             action="list",
             resource_type="documents",
-            status="success",
             details={
                 "search": search,
-                "tags": tags,
-                "collection_id": collection_id,
-                "status": status,
-                "page": page,
-                "page_size": page_size
+                "file_type": file_type,
+                "user_documents": user_documents,
+                "count": len(result["items"])
             },
             db=db
         )
         
-        return documents
-    
+        return result
+        
     except Exception as e:
         logger.error(f"Error listing documents: {str(e)}")
-        
-        # Audit log kaydı
-        await audit_service.log_event(
-            event_type=AuditLogType.DATA,
-            user_id=current_user["id"],
-            action="list",
-            resource_type="documents",
-            status="failure",
-            details={
-                "error": str(e),
-                "search": search,
-                "tags": tags,
-                "collection_id": collection_id
-            },
-            db=db
-        )
-        
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while listing documents: {str(e)}"
+            detail=str(e)
         )
-
-@router.get("/{document_id}", response_model=DocumentResponse)
-async def get_document(
-    document_id: str,
-    include_content: bool = Query(False, description="Include document content"),
-    current_user: Dict[str, Any] = Depends(get_current_user_optional),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Belge detaylarını getirir
-    
-    Parametreler:
-    - **document_id**: Belge ID
-    - **include_content**: Belge içeriği dahil edilsin mi
-    
-    Dönüş:
-    - DocumentResponse: Belge detayları
-    """
-    try:
-        # Belgeyi getir
-        document = await document_service.get_document(
-            db=db,
-            document_id=document_id,
-            user_id=current_user["id"] if current_user else None,
-            include_content=include_content
-        )
-        
-        if not document:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Document not found"
-            )
-        
-        # Audit log kaydı
-        if current_user:
-            await audit_service.log_event(
-                event_type=AuditLogType.DATA,
-                user_id=current_user["id"],
-                action="view",
-                resource_type="document",
-                resource_id=document_id,
-                status="success",
-                db=db
-            )
-        
-        return document
-    
-    except HTTPException:
-        raise
-        
-    except Exception as e:
-        logger.error(f"Error getting document: {str(e)}")
-        
-        # Audit log kaydı
-        if current_user:
-            await audit_service.log_event(
-                event_type=AuditLogType.DATA,
-                user_id=current_user["id"],
-                action="view",
-                resource_type="document",
-                resource_id=document_id,
-                status="failure",
-                details={"error": str(e)},
-                db=db
-            )
-        
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while getting document: {str(e)}"
-        )
-
-@router.post("/", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
-async def create_document(
-    request: Request,
-    file: UploadFile = File(...),
-    title: str = Form(...),
-    description: Optional[str] = Form(None),
-    tags: Optional[str] = Form(None),
-    collection_id: Optional[str] = Form(None),
-    is_public: bool = Form(False),
-    current_user: Dict[str, Any] = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Yeni bir belge oluşturur
-    
-    Parametreler:
-    - **file**: Yüklenecek dosya
-    - **title**: Belge başlığı
-    - **description**: Belge açıklaması (opsiyonel)
-    - **tags**: Virgülle ayrılmış etiketler (opsiyonel)
-    - **collection_id**: Koleksiyon ID (opsiyonel)
-    - **is_public**: Herkese açık mı
-    
-    Dönüş:
-    - DocumentResponse: Oluşturulan belge
-    """
-    try:
-        # IP adresini al
-        client_ip = request.client.host if request.client else None
-        
-        # Form verilerini hazırla
-        document_data = DocumentCreate(
-            title=title,
-            description=description,
-            tags=tags.split(",") if tags else [],
-            collection_id=collection_id,
-            is_public=is_public
-        )
-        
-        # Dosyayı yükle ve belgeyi oluştur
-        document = await document_service.create_document(
-            db=db,
-            document_data=document_data,
-            file=file,
-            user_id=current_user["id"],
-            organization_id=current_user.get("organization_id")
-        )
-        
-        # Audit log kaydı
-        await audit_service.log_event(
-            event_type=AuditLogType.DATA,
-            user_id=current_user["id"],
-            action="create",
-            resource_type="document",
-            resource_id=document.id,
-            status="success",
-            details={
-                "title": title,
-                "is_public": is_public,
-                "file_name": file.filename,
-                "content_type": file.content_type
-            },
-            ip_address=client_ip,
-            db=db
-        )
-        
-        return document
-    
-    except Exception as e:
-        logger.error(f"Error creating document: {str(e)}")
-        
-        # Audit log kaydı
-        await audit_service.log_event(
-            event_type=AuditLogType.DATA,
-            user_id=current_user["id"],
-            action="create",
-            resource_type="document",
-            status="failure",
-            details={
-                "error": str(e),
-                "title": title,
-                "file_name": file.filename
-            },
-            ip_address=client_ip,
-            db=db
-        )
-        
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while creating document: {str(e)}"
-        )
-
-@router.put("/{document_id}", response_model=DocumentResponse)
-async def update_document(
-    document_id: str,
-    document_update: DocumentUpdate,
-    current_user: Dict[str, Any] = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Belge bilgilerini günceller
-    
-    Parametreler:
-    - **document_id**: Güncellenecek belge ID
-    - **document_update**: Güncellenecek alanlar
-    
-    Dönüş:
-    - DocumentResponse: Güncellenen belge
-    """
-    try:
-        # Belgenin mevcut olduğunu ve erişim izni olduğunu kontrol et
-        existing_document = await document_service.get_document(
-            db=db,
-            document_id=document_id,
-            user_id=current_user["id"]
-        )
-        
-        if not existing_document:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Document not found or access denied"
-            )
-        
-        # Belgeyi güncelle
-        document = await document_service.update_document(
-            db=db,
-            document_id=document_id,
-            document_update=document_update,
-            user_id=current_user["id"]
-        )
-        
-        # Audit log kaydı
-        await audit_service.log_event(
-            event_type=AuditLogType.DATA,
-            user_id=current_user["id"],
-            action="update",
-            resource_type="document",
-            resource_id=document_id,
-            status="success",
-            details={
-                "updated_fields": document_update.dict(exclude_unset=True)
-            },
-            db=

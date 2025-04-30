@@ -1,522 +1,417 @@
-// Last reviewed: 2025-04-29 14:12:11 UTC (User: TeeksssKullanıcı)
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
-import jwtDecode from 'jwt-decode';
+// Last reviewed: 2025-04-30 05:36:04 UTC (User: TeeksssJWT)
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import API from '../api/api';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from './ToastContext';
-import { useTranslation } from 'react-i18next';
 
-// Auth durumu için tür tanımları
+// AuthContext için tip tanımları
 interface User {
   id: string;
   email: string;
-  username: string;
-  full_name: string;
-  is_active: boolean;
+  username: string | null;
+  full_name: string | null;
   is_superuser: boolean;
-  organization_id?: string;
-  created_at?: string;
-}
-
-interface AuthTokens {
-  access_token: string;
-  refresh_token: string;
-  token_type: string;
-  expires_in: number;
+  roles: string[];
+  organization_id: string | null;
 }
 
 interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
-  tokens: AuthTokens | null;
-  isLoading: boolean;
+  token: string | null;
+  loading: boolean;
+  tokenExpiresAt: number | null;
 }
 
-interface AuthContextProps extends AuthState {
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  register: (userData: RegisterData) => Promise<boolean>;
-  updateProfile: (userData: UpdateProfileData) => Promise<boolean>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
-  loginWithTokens: (accessToken: string, refreshToken: string) => Promise<boolean>;
-  refreshToken: () => Promise<boolean>;
-  hasPermission: (permission: string | string[]) => boolean;
-  getToken: () => string | null;
-}
-
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-interface RegisterData {
-  email: string;
-  username: string;
-  password: string;
-  full_name: string;
-}
-
-interface UpdateProfileData {
-  email?: string;
-  username?: string;
-  full_name?: string;
-}
-
-// Token içindeki JWT yapısı
-interface JwtPayload {
-  exp: number;
-  sub: string;
-  user_id: string;
+interface LoginResponse {
+  access_token: string;
   token_type: string;
+  expires_in: number;
+  user: User;
 }
 
-// Auth Context oluştur
-const AuthContext = createContext<AuthContextProps | undefined>(undefined);
+interface AuthContextType extends AuthState {
+  login: (email: string, password: string) => Promise<void>;
+  logout: (options?: { revokeAll?: boolean }) => Promise<void>;
+  refreshToken: () => Promise<boolean>;
+  hasRole: (role: string | string[]) => boolean;
+  isSuperuser: () => boolean;
+}
 
-// Local storage anahtar adları
-const ACCESS_TOKEN_KEY = 'access_token';
-const REFRESH_TOKEN_KEY = 'refresh_token';
-const USER_KEY = 'user_data';
+// Context oluştur
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Auth Provider bileşeni
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const { t } = useTranslation();
-  const { showToast } = useToast();
-  const navigate = useNavigate();
-  
-  // Auth state
-  const [state, setState] = useState<AuthState>({
+// Context sağlayıcı bileşeni
+export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
+  const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
     user: null,
-    tokens: null,
-    isLoading: true
+    token: null,
+    loading: true,
+    tokenExpiresAt: null,
   });
+  const [refreshTimerId, setRefreshTimerId] = useState<NodeJS.Timeout | null>(null);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [sessionTimeoutWarningShown, setSessionTimeoutWarningShown] = useState<boolean>(false);
   
-  // Token yenileme için interval
-  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
-  
-  // Başlangıçta localStorage'dan token ve kullanıcı bilgilerini yükle
+  const { showToast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Token bilgilerini local storage'dan yükleme
   useEffect(() => {
-    const loadAuthState = async () => {
-      try {
-        const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
-        const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-        const userData = localStorage.getItem(USER_KEY);
-        
-        if (accessToken && refreshToken && userData) {
-          // Token geçerli mi kontrol et
-          const isValid = isTokenValid(accessToken);
+    const loadAuthState = () => {
+      const token = localStorage.getItem('token');
+      const userJSON = localStorage.getItem('user');
+      const expiration = localStorage.getItem('tokenExpiresAt');
+      
+      if (token && userJSON && expiration) {
+        try {
+          const user = JSON.parse(userJSON);
+          const expiresAt = parseInt(expiration, 10);
           
-          if (isValid) {
-            // Token geçerliyse kullanıcı durumunu güncelle
-            const user = JSON.parse(userData) as User;
+          // Token süresi dolmuş mu kontrol et
+          if (expiresAt > Date.now()) {
+            // API istemcisine token'ı ayarla
+            API.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             
-            setState({
+            setAuthState({
               isAuthenticated: true,
               user,
-              tokens: {
-                access_token: accessToken,
-                refresh_token: refreshToken,
-                token_type: 'bearer',
-                expires_in: 3600
-              },
-              isLoading: false
+              token,
+              loading: false,
+              tokenExpiresAt: expiresAt
             });
             
-            // API için Authorization header'ı ayarla
-            API.setAuthHeader(accessToken);
-            
-            // Token yenileme interval'i başlat
-            startTokenRefreshInterval();
+            // Otomatik token yenileme zamanlayıcısını ayarla
+            scheduleTokenRefresh(expiresAt);
           } else {
-            // Access token geçersiz, refresh token ile yenilemeyi dene
-            const refreshed = await refreshTokenRequest(refreshToken);
-            
-            if (!refreshed) {
-              // Yenileme başarısız, oturumu temizle
-              clearAuthState();
-            }
-            
-            setState(prev => ({ ...prev, isLoading: false }));
+            // Token süresi dolmuşsa oturumu temizle
+            clearAuthState();
           }
-        } else {
-          // Token yok, oturumu temizle
+        } catch (error) {
+          console.error('Error parsing auth data:', error);
           clearAuthState();
-          setState(prev => ({ ...prev, isLoading: false }));
         }
-      } catch (error) {
-        console.error('Error loading auth state:', error);
-        clearAuthState();
-        setState(prev => ({ ...prev, isLoading: false }));
+      } else {
+        setAuthState(prev => ({ ...prev, loading: false }));
       }
     };
     
     loadAuthState();
     
-    // Cleanup function
+    // Temizleme fonksiyonu
     return () => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval);
+      if (refreshTimerId) {
+        clearTimeout(refreshTimerId);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
-  // Token'ın geçerli olup olmadığını kontrol et
-  const isTokenValid = (token: string): boolean => {
-    try {
-      const decoded = jwtDecode<JwtPayload>(token);
-      const currentTime = Math.floor(Date.now() / 1000);
-      
-      // Token süresi dolmadıysa ve access token ise geçerli
-      return decoded.exp > currentTime && decoded.token_type === 'access';
-    } catch (error) {
-      console.error('Error decoding token:', error);
-      return false;
-    }
-  };
-  
-  // Token yenileme interval'i başlat
-  const startTokenRefreshInterval = () => {
-    // Önce varsa eski interval'i temizle
-    if (refreshInterval) {
-      clearInterval(refreshInterval);
+  // Token yenileme zamanlayıcısını ayarla
+  const scheduleTokenRefresh = useCallback((expiresAt: number) => {
+    if (refreshTimerId) {
+      clearTimeout(refreshTimerId);
     }
     
-    // Her 15 dakikada bir token'ı yenile
-    const interval = setInterval(() => {
+    // Token süresinin %75'i geçince yenileme işlemini başlat
+    const currentTime = Date.now();
+    const expirationTime = expiresAt;
+    const timeUntilExpiry = expirationTime - currentTime;
+    const refreshTime = timeUntilExpiry * 0.75; // Sürenin %75'i kadar bekle
+    
+    // Uyarı gösterme zamanlayıcısı - 1 dakika kaldığında
+    const warningTime = timeUntilExpiry - 60000; // 1 dakika öncesinde uyar
+    
+    if (warningTime > 0) {
+      setTimeout(() => {
+        showSessionTimeoutWarning();
+      }, warningTime);
+    }
+    
+    if (refreshTime <= 0) {
+      // Eğer zaten süre dolmak üzereyse hemen yenile
       refreshToken();
-    }, 15 * 60 * 1000); // 15 dakika
-    
-    setRefreshInterval(interval);
+    } else {
+      // Yoksa zamanlayıcı ayarla
+      const timerId = setTimeout(() => {
+        refreshToken();
+      }, refreshTime);
+      
+      setRefreshTimerId(timerId);
+    }
+  }, [refreshTimerId]);
+  
+  // Oturum zaman aşımı uyarısını göster
+  const showSessionTimeoutWarning = () => {
+    if (!sessionTimeoutWarningShown) {
+      setSessionTimeoutWarningShown(true);
+      
+      showToast(
+        'warning', 
+        'Oturumunuzun süresi dolmak üzere. Devam etmek için lütfen sayfayı yenileyin veya bir işlem yapın.',
+        10000 // 10 saniye göster
+      );
+      
+      // Kullanıcı işlem yaparsa uyarıyı sıfırla
+      const resetWarning = () => {
+        setSessionTimeoutWarningShown(false);
+      };
+      
+      window.addEventListener('click', resetWarning, { once: true });
+    }
   };
   
-  // Refresh token ile yeni access token al
-  const refreshTokenRequest = async (refreshToken: string): Promise<boolean> => {
-    try {
-      const response = await API.post('/auth/refresh', { refresh_token: refreshToken });
-      
-      const { access_token, refresh_token, user } = response.data;
-      
-      // Token ve kullanıcı bilgilerini güncelle
-      localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
-      localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
-      
-      // API için Authorization header'ı güncelle
-      API.setAuthHeader(access_token);
-      
-      // State'i güncelle
-      setState({
-        isAuthenticated: true,
-        user,
-        tokens: {
-          access_token,
-          refresh_token,
-          token_type: 'bearer',
-          expires_in: 3600
-        },
-        isLoading: false
-      });
-      
-      return true;
-    } catch (error) {
-      console.error('Error refreshing token:', error);
+  // Token yenileme fonksiyonu
+  const refreshToken = useCallback(async (): Promise<boolean> => {
+    // Eğer zaten yenileme işlemi yapılıyorsa bekle
+    if (refreshing) {
       return false;
     }
-  };
-  
-  // Auth state'i temizle
-  const clearAuthState = () => {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
     
-    // API Authorization header'ı temizle
-    API.clearAuthHeader();
-    
-    // State'i güncelle
-    setState({
-      isAuthenticated: false,
-      user: null,
-      tokens: null,
-      isLoading: false
-    });
-    
-    // Token yenileme interval'i temizle
-    if (refreshInterval) {
-      clearInterval(refreshInterval);
-      setRefreshInterval(null);
-    }
-  };
-  
-  // Login fonksiyonu
-  const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      setState(prev => ({ ...prev, isLoading: true }));
+      setRefreshing(true);
       
-      // FormData kullanarak login isteği gönder (FastAPI OAuth2 ile uyumlu)
-      const formData = new FormData();
-      formData.append('username', email);
-      formData.append('password', password);
+      // Token yenileme isteği yap
+      const response = await API.post<LoginResponse>('/auth/refresh');
       
-      const response = await API.post('/auth/login', formData);
-      
-      const { access_token, refresh_token, user } = response.data;
-      
-      // Token ve kullanıcı bilgilerini kaydet
-      localStorage.setItem(ACCESS_TOKEN_KEY, access_token);
-      localStorage.setItem(REFRESH_TOKEN_KEY, refresh_token);
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
-      
-      // API için Authorization header'ı ayarla
-      API.setAuthHeader(access_token);
-      
-      // State'i güncelle
-      setState({
-        isAuthenticated: true,
-        user,
-        tokens: {
-          access_token,
-          refresh_token,
-          token_type: 'bearer',
-          expires_in: 3600
-        },
-        isLoading: false
-      });
-      
-      // Token yenileme interval'i başlat
-      startTokenRefreshInterval();
-      
-      showToast(t('auth.loginSuccess'), 'success');
-      return true;
-    } catch (error: any) {
-      console.error('Login error:', error.response?.data || error);
-      showToast(error.response?.data?.detail || t('auth.loginError'), 'error');
-      setState(prev => ({ ...prev, isLoading: false }));
-      return false;
-    }
-  };
-  
-  // Mevcut token'ları kullanarak giriş yap (SSO için)
-  const loginWithTokens = async (accessToken: string, refreshToken: string): Promise<boolean> => {
-    try {
-      setState(prev => ({ ...prev, isLoading: true }));
-      
-      // Token geçerliliğini kontrol et
-      if (!isTokenValid(accessToken)) {
-        // Access token geçersiz, refresh token ile yenilemeyi dene
-        const refreshed = await refreshTokenRequest(refreshToken);
+      if (response.data) {
+        const { access_token, expires_in, user } = response.data;
+        const expiresAt = Date.now() + (expires_in * 1000);
         
-        if (!refreshed) {
-          // Yenileme başarısız
-          setState(prev => ({ ...prev, isLoading: false }));
-          return false;
-        }
+        // Token ve kullanıcı bilgilerini güncelle
+        localStorage.setItem('token', access_token);
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('tokenExpiresAt', expiresAt.toString());
         
+        // API istemcisine yeni token'ı ayarla
+        API.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+        
+        // Auth durumunu güncelle
+        setAuthState({
+          isAuthenticated: true,
+          user,
+          token: access_token,
+          loading: false,
+          tokenExpiresAt: expiresAt
+        });
+        
+        // Yeni zamanlayıcı ayarla
+        scheduleTokenRefresh(expiresAt);
+        
+        setRefreshing(false);
+        setSessionTimeoutWarningShown(false);
         return true;
       }
       
-      // Token geçerliyse kullanıcı bilgilerini al
-      API.setAuthHeader(accessToken);
-      const response = await API.get('/auth/me');
+      setRefreshing(false);
+      return false;
       
-      const user = response.data;
+    } catch (error) {
+      console.error('Error refreshing token:', error);
       
-      // Token ve kullanıcı bilgilerini kaydet
-      localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-      localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
+      // Yenileme başarısız olursa oturumu kapat
+      clearAuthState();
       
-      // State'i güncelle
-      setState({
+      // Hata mesajı göster
+      showToast('error', 'Oturumunuzun süresi doldu. Lütfen tekrar giriş yapın.', 5000);
+      
+      // Giriş sayfasına yönlendir, mevcut konumu sakla
+      navigate('/login', { state: { from: location.pathname } });
+      
+      setRefreshing(false);
+      return false;
+    }
+  }, [navigate, location, refreshing]);
+  
+  // Giriş fonksiyonu
+  const login = async (email: string, password: string): Promise<void> => {
+    try {
+      // Form verileri oluştur
+      const formData = new FormData();
+      formData.append('username', email); // OAuth2 standardı username field kullanıyor
+      formData.append('password', password);
+      
+      const response = await API.post<LoginResponse>('/auth/token', formData);
+      const { access_token, expires_in, user } = response.data;
+      
+      // Token süresi hesapla (saniyeden milisaniyeye)
+      const expiresAt = Date.now() + (expires_in * 1000);
+      
+      // Token ve kullanıcı bilgilerini sakla
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('tokenExpiresAt', expiresAt.toString());
+      
+      // API istemcisine token'ı ayarla
+      API.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+      
+      // Auth durumunu güncelle
+      setAuthState({
         isAuthenticated: true,
         user,
-        tokens: {
-          access_token: accessToken,
-          refresh_token: refreshToken,
-          token_type: 'bearer',
-          expires_in: 3600
-        },
-        isLoading: false
+        token: access_token,
+        loading: false,
+        tokenExpiresAt: expiresAt
       });
       
-      // Token yenileme interval'i başlat
-      startTokenRefreshInterval();
+      // Token yenileme zamanlayıcısını ayarla
+      scheduleTokenRefresh(expiresAt);
       
-      return true;
+      // Başarı mesajı göster
+      showToast('success', 'Başarıyla giriş yapıldı!');
+      
     } catch (error: any) {
-      console.error('Token login error:', error.response?.data || error);
-      setState(prev => ({ ...prev, isLoading: false }));
-      return false;
+      console.error('Login error:', error);
+      
+      // Hata mesajı göster
+      let errorMessage = 'Giriş yapılırken bir hata oluştu.';
+      
+      if (error.response?.data?.detail) {
+        if (typeof error.response.data.detail === 'object' && error.response.data.detail.message) {
+          errorMessage = error.response.data.detail.message;
+        } else {
+          errorMessage = error.response.data.detail;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
   };
   
-  // Logout fonksiyonu
-  const logout = async () => {
+  // Çıkış fonksiyonu
+  const logout = async (options: { revokeAll?: boolean } = {}): Promise<void> => {
     try {
-      // Backend'e logout isteği gönder (tercihen)
-      if (state.isAuthenticated) {
-        await API.post('/auth/logout');
+      if (authState.token) {
+        // Çıkış isteği gönder
+        await API.post('/auth/logout', { revoke_all: options.revokeAll });
       }
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Auth state'i temizle
+      // Auth durumunu temizle
       clearAuthState();
+      
+      // Başarı mesajı göster
+      showToast('success', 'Başarıyla çıkış yapıldı.');
+      
       // Ana sayfaya yönlendir
-      navigate('/login');
-      showToast(t('auth.logoutSuccess'), 'info');
+      navigate('/');
     }
   };
   
-  // Kayıt fonksiyonu
-  const register = async (userData: RegisterData): Promise<boolean> => {
-    try {
-      setState(prev => ({ ...prev, isLoading: true }));
-      
-      await API.post('/auth/register', userData);
-      
-      setState(prev => ({ ...prev, isLoading: false }));
-      showToast(t('auth.registerSuccess'), 'success');
-      return true;
-    } catch (error: any) {
-      console.error('Register error:', error.response?.data || error);
-      showToast(error.response?.data?.detail || t('auth.registerError'), 'error');
-      setState(prev => ({ ...prev, isLoading: false }));
-      return false;
-    }
-  };
-  
-  // Profil güncelleme fonksiyonu
-  const updateProfile = async (userData: UpdateProfileData): Promise<boolean> => {
-    try {
-      setState(prev => ({ ...prev, isLoading: true }));
-      
-      const response = await API.put('/auth/me', userData);
-      
-      // Kullanıcı bilgilerini güncelle
-      const updatedUser = response.data;
-      localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
-      
-      // State'i güncelle
-      setState(prev => ({
-        ...prev,
-        user: updatedUser,
-        isLoading: false
-      }));
-      
-      showToast(t('auth.profileUpdateSuccess'), 'success');
-      return true;
-    } catch (error: any) {
-      console.error('Profile update error:', error.response?.data || error);
-      showToast(error.response?.data?.detail || t('auth.profileUpdateError'), 'error');
-      setState(prev => ({ ...prev, isLoading: false }));
-      return false;
-    }
-  };
-  
-  // Şifre değiştirme fonksiyonu
-  const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
-    try {
-      setState(prev => ({ ...prev, isLoading: true }));
-      
-      await API.put('/auth/me/password', {
-        current_password: currentPassword,
-        new_password: newPassword
-      });
-      
-      setState(prev => ({ ...prev, isLoading: false }));
-      showToast(t('auth.passwordChangeSuccess'), 'success');
-      return true;
-    } catch (error: any) {
-      console.error('Password change error:', error.response?.data || error);
-      showToast(error.response?.data?.detail || t('auth.passwordChangeError'), 'error');
-      setState(prev => ({ ...prev, isLoading: false }));
-      return false;
-    }
-  };
-  
-  // Token yenileme fonksiyonu (manuel)
-  const refreshToken = async (): Promise<boolean> => {
-    const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  // Auth durumunu temizleme
+  const clearAuthState = () => {
+    // Local storage'dan token bilgilerini temizle
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('tokenExpiresAt');
     
-    if (!refreshToken) {
+    // API istemcisinden token'ı kaldır
+    delete API.defaults.headers.common['Authorization'];
+    
+    // Auth durumunu güncelle
+    setAuthState({
+      isAuthenticated: false,
+      user: null,
+      token: null,
+      loading: false,
+      tokenExpiresAt: null
+    });
+    
+    // Zamanlayıcıyı temizle
+    if (refreshTimerId) {
+      clearTimeout(refreshTimerId);
+      setRefreshTimerId(null);
+    }
+  };
+  
+  // Rol kontrolü fonksiyonu
+  const hasRole = useCallback((role: string | string[]): boolean => {
+    if (!authState.isAuthenticated || !authState.user) {
       return false;
     }
     
-    return await refreshTokenRequest(refreshToken);
-  };
-  
-  // Kullanıcının belirli izinlere sahip olup olmadığını kontrol et
-  const hasPermission = (permission: string | string[]): boolean => {
-    // Kullanıcı yoksa veya aktif değilse izin yok
-    if (!state.user || !state.user.is_active) {
-      return false;
-    }
-    
-    // Süper kullanıcı ise tüm izinlere sahip
-    if (state.user.is_superuser) {
+    // Süper kullanıcı her zaman tüm rollere sahiptir
+    if (authState.user.is_superuser) {
       return true;
     }
     
-    // TODO: İzin tabanlı kontrol sistemi geliştirilebilir
-    // Şimdilik basit kontroller yapılıyor
+    const userRoles = authState.user.roles || [];
     
-    // Eğer bir dizi izin verilmişse, herhangi birine sahip olması yeterli
-    if (Array.isArray(permission)) {
-      return permission.some(p => hasPermission(p));
+    if (Array.isArray(role)) {
+      // Birden fazla rolden en az birine sahip mi kontrol et
+      return role.some(r => userRoles.includes(r));
+    } else {
+      // Tek bir role sahip mi kontrol et
+      return userRoles.includes(role);
     }
-    
-    // Basit izin kontrolleri
-    switch (permission) {
-      case 'documents:view':
-      case 'documents:search':
-        return true; // Tüm aktif kullanıcılar belgeleri görüntüleyebilir ve arayabilir
-        
-      case 'documents:create':
-      case 'documents:edit':
-      case 'documents:delete':
-        return true; // Tüm aktif kullanıcılar belge işlemleri yapabilir
-        
-      case 'admin:access':
-      case 'users:manage':
-      case 'organizations:manage':
-        return state.user.is_superuser; // Sadece süper kullanıcılar
-        
-      default:
-        return false; // Bilinmeyen izinler için varsayılan olarak reddetme
-    }
-  };
+  }, [authState.isAuthenticated, authState.user]);
   
-  // Geçerli access token'ı al
-  const getToken = (): string | null => {
-    return localStorage.getItem(ACCESS_TOKEN_KEY);
-  };
+  // Süper kullanıcı kontrolü
+  const isSuperuser = useCallback((): boolean => {
+    return Boolean(authState.isAuthenticated && authState.user?.is_superuser);
+  }, [authState.isAuthenticated, authState.user]);
   
-  // Context value
-  const value: AuthContextProps = {
-    ...state,
+  // Context değerleri
+  const value = {
+    ...authState,
     login,
     logout,
-    register,
-    updateProfile,
-    changePassword,
-    loginWithTokens,
     refreshToken,
-    hasPermission,
-    getToken
+    hasRole,
+    isSuperuser
   };
   
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
-// Context hook'u
-export const useAuth = (): AuthContextProps => {
+// Auth context hook
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (!context) {
+  
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+  
   return context;
 };
 
-export default AuthContext;
+// İzin kontrolü hooks'u
+export const useRequireAuth = () => {
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  useEffect(() => {
+    if (!auth.loading && !auth.isAuthenticated) {
+      // Kullanıcı giriş yapmamışsa, giriş sayfasına yönlendir
+      navigate('/login', { state: { from: location.pathname } });
+    }
+  }, [auth.loading, auth.isAuthenticated, navigate, location]);
+  
+  return auth;
+};
+
+// Rol kontrolü hooks'u
+export const useRequireRole = (requiredRole: string | string[]) => {
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
+  
+  useEffect(() => {
+    if (!auth.loading && auth.isAuthenticated) {
+      // Kullanıcı giriş yapmış ama gerekli role sahip değilse
+      if (!auth.hasRole(requiredRole)) {
+        showToast('error', 'Bu sayfaya erişim izniniz bulunmamaktadır.');
+        navigate('/'); // Ana sayfaya yönlendir
+      }
+    }
+  }, [auth.loading, auth.isAuthenticated, auth.hasRole, requiredRole, navigate, showToast]);
+  
+  return auth;
+};

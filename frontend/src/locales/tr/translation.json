@@ -1,0 +1,27 @@
+{
+  "document": {
+    "uploadDocument": "Belge Yükle",
+    "selectFile": "Dosya Seç",
+    "allowedFileTypes": "İzin verilen dosya türleri",
+    "maxFileSize": "Maksimum dosya boyutu",
+    "title": "Başlık",
+    "enterTitle": "Belge başlığını girin",
+    "upload": "Yükle",
+    "uploading": "Yükleniyor...",
+    "uploadSuccess": "Belge başarıyla yüklendi",
+    "uploadError": "Belge yüklenirken hata oluştu",
+    "fileSizeError": "Dosya çok büyük. Maksimum boyut: {{maxSize}} MB",
+    "titleRequired": "Başlık gerekli",
+    "noFileSelected": "Lütfen bir dosya seçin",
+    "applyOcr": "OCR Uygula (Resimlerden ve taranmış PDF'lerden metin çıkar)",
+    "ocrDescription": "OCR, belgeden metin çıkarmak için optik karakter tanımayı kullanır. Görüntü dosyaları ve taranmış PDF'ler için önerilir.",
+    "duplicateDocument": "Bu belge zaten sistemde mevcut. Lütfen farklı bir belge yükleyin.",
+    "deleteDocument": "Belgeyi Sil",
+    "deleteConfirmation": "Bu belgeyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+    "delete": "Sil",
+    "cancel": "İptal",
+    "deleteSuccess": "Belge başarıyla silindi",
+    "deleteError": "Belge silinirken hata oluştu",
+    "permissionDenied": "Bu belgeyi silme izniniz yok. Sadece belge sahipleri belgeleri silebilir."
+  }
+}

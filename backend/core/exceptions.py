@@ -1,10 +1,12 @@
-# Last reviewed: 2025-04-29 14:53:18 UTC (User: Teeksss)
+# Last reviewed: 2025-04-30 05:22:47 UTC (User: Teeksss)
 from typing import Any, Dict, Optional, List, Union
 from fastapi import HTTPException, status
 from pydantic import BaseModel, Field, validator
 import logging
 import traceback
 import sys
+import uuid
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +119,8 @@ class BaseAppException(Exception):
         self.error_type = error_type or ErrorType.INTERNAL_ERROR
         self.detail = detail
         self.headers = headers
+        self.trace_id = str(uuid.uuid4())
+        self.timestamp = datetime.now(timezone.utc).isoformat()
         super().__init__(self.message)
     
     def to_http_exception(self) -> HTTPException:
@@ -129,7 +133,9 @@ class BaseAppException(Exception):
                 "message": self.message,
                 "error_code": self.error_code,
                 "error_type": self.error_type,
-                "detail": self.detail
+                "detail": self.detail,
+                "trace_id": self.trace_id,
+                "timestamp": self.timestamp
             },
             headers=self.headers
         )
@@ -205,4 +211,93 @@ class NotFoundError(BaseAppException):
     def __init__(
         self, 
         message: str = "Resource not found", 
-        detail: Optional[Union[str, List[Dict[str, Any]]]] =
+        detail: Optional[Union[str, List[Dict[str, Any]]]] = None,
+        error_code: str = ErrorCode.RESOURCE_NOT_FOUND
+    ):
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_404_NOT_FOUND,
+            error_code=error_code,
+            error_type=ErrorType.NOT_FOUND_ERROR,
+            detail=detail
+        )
+
+class ConflictError(BaseAppException):
+    """Çakışma hatası"""
+    def __init__(
+        self, 
+        message: str = "Resource conflict", 
+        detail: Optional[Union[str, List[Dict[str, Any]]]] = None,
+        error_code: str = ErrorCode.RESOURCE_ALREADY_EXISTS
+    ):
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_409_CONFLICT,
+            error_code=error_code,
+            error_type=ErrorType.CONFLICT_ERROR,
+            detail=detail
+        )
+
+class ExternalServiceError(BaseAppException):
+    """Dış servis hatası"""
+    def __init__(
+        self, 
+        message: str = "External service error", 
+        detail: Optional[Union[str, List[Dict[str, Any]]]] = None,
+        error_code: str = ErrorCode.EXTERNAL_SERVICE_ERROR
+    ):
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            error_code=error_code,
+            error_type=ErrorType.EXTERNAL_SERVICE_ERROR,
+            detail=detail
+        )
+
+class RateLimitError(BaseAppException):
+    """Hız sınırlama hatası"""
+    def __init__(
+        self, 
+        message: str = "Rate limit exceeded", 
+        detail: Optional[Union[str, List[Dict[str, Any]]]] = None,
+        error_code: str = ErrorCode.RATE_LIMIT_EXCEEDED
+    ):
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            error_code=error_code,
+            error_type=ErrorType.RATE_LIMIT_ERROR,
+            detail=detail
+        )
+
+class BusinessLogicError(BaseAppException):
+    """İş mantığı hatası"""
+    def __init__(
+        self, 
+        message: str = "Business rule violation", 
+        detail: Optional[Union[str, List[Dict[str, Any]]]] = None,
+        error_code: str = ErrorCode.BUSINESS_RULE_VIOLATION
+    ):
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error_code=error_code,
+            error_type=ErrorType.BUSINESS_LOGIC_ERROR,
+            detail=detail
+        )
+
+class FileError(BaseAppException):
+    """Dosya işleme hatası"""
+    def __init__(
+        self, 
+        message: str = "File processing error", 
+        detail: Optional[Union[str, List[Dict[str, Any]]]] = None,
+        error_code: str = ErrorCode.FILE_UPLOAD_ERROR
+    ):
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error_code=error_code,
+            error_type=ErrorType.FILE_ERROR,
+            detail=detail
+        )
