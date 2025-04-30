@@ -1,166 +1,329 @@
-# Last reviewed: 2025-04-29 13:14:42 UTC (User: TeeksssAPI)
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Body, Query
-from fastapi.responses import StreamingResponse, JSONResponse
-from typing import List, Optional, Dict, Any
-import time
+# Last reviewed: 2025-04-29 14:12:11 UTC (User: TeeksssKullanıcı)
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form, Body, Query, Request, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field
+from typing import Dict, Any, Optional, List, Union
+import logging
+import uuid
+from datetime import datetime
 
 from ...db.session import get_db
-from ...schemas.document import DocumentCreate, DocumentUpdate, DocumentResponse
+from ...schemas.document import DocumentCreate, DocumentResponse, DocumentUpdate, DocumentListResponse
 from ...repositories.document_repository import DocumentRepository
-from ...services.document_processor import DocumentProcessor
+from ...services.document_service import DocumentService
+from ...services.storage_service import StorageService
+from ...services.audit_service import AuditService, AuditLogType
 from ...auth.jwt import get_current_active_user, get_current_user_optional
 
 router = APIRouter(
     prefix="/api/documents",
     tags=["documents"],
-    responses={
-        404: {"description": "Not found"},
-        403: {"description": "Forbidden"},
-        401: {"description": "Unauthorized"}
-    }
+    responses={401: {"description": "Unauthorized"}}
 )
 
-class DocumentUploadRequest(BaseModel):
-    title: str = Field(..., description="Document title", example="Financial Report Q2 2025")
-    description: Optional[str] = Field(None, description="Document description")
-    is_public: bool = Field(False, description="Whether the document is public")
-    tags: Optional[List[str]] = Field(None, description="List of tags", example=["finance", "report"])
-    collection_id: Optional[int] = Field(None, description="Collection ID to add document to")
-    auto_process: bool = Field(True, description="Whether to automatically process the document")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
-    
-    class Config:
-        schema_extra = {
-            "example": {
-                "title": "Financial Report Q2 2025",
-                "description": "Quarterly financial report for Q2 2025",
-                "is_public": False,
-                "tags": ["finance", "report", "q2"],
-                "collection_id": 123,
-                "auto_process": True,
-                "metadata": {
-                    "department": "Finance",
-                    "author": "Jane Doe",
-                    "version": "1.0"
-                }
-            }
-        }
+logger = logging.getLogger(__name__)
+document_service = DocumentService()
+storage_service = StorageService()
+audit_service = AuditService()
 
-@router.post("/upload", response_model=DocumentResponse, summary="Upload a new document", 
-    description="Uploads a new document to the system and optionally processes it")
-async def upload_document(
-    file: UploadFile = File(..., description="The document file to upload"),
-    title: str = Form(..., description="Document title"),
-    description: Optional[str] = Form(None, description="Document description"),
-    is_public: bool = Form(False, description="Whether the document is public"),
-    tags: Optional[str] = Form(None, description="Comma-separated list of tags"),
-    collection_id: Optional[int] = Form(None, description="Collection ID to add document to"),
-    auto_process: bool = Form(True, description="Whether to automatically process the document"),
-    metadata: Optional[str] = Form(None, description="JSON-formatted metadata"),
-    db: AsyncSession = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_active_user)
-):
-    """
-    Upload a new document to the system.
-    
-    - **file**: The document file to upload (supported formats: PDF, DOCX, TXT, HTML, etc.)
-    - **title**: Document title
-    - **description**: Optional description
-    - **is_public**: Whether the document is publicly accessible
-    - **tags**: Optional comma-separated list of tags
-    - **collection_id**: Optional collection to add the document to
-    - **auto_process**: Whether to automatically process the document after upload
-    - **metadata**: Optional JSON-formatted metadata
-    
-    Returns the created document information including the document ID.
-    """
-    # Implementation goes here...
-    return {"id": 1, "title": title, "status": "uploaded"}
-
-@router.get("/", response_model=List[DocumentResponse], summary="List documents", 
-    description="Get a list of documents with optional filtering")
+@router.get("/", response_model=DocumentListResponse)
 async def list_documents(
-    search: Optional[str] = Query(None, description="Search query"),
+    search: Optional[str] = Query(None, description="Search query for documents"),
     tags: Optional[List[str]] = Query(None, description="Filter by tags"),
-    collection_id: Optional[int] = Query(None, description="Filter by collection ID"),
-    include_public: bool = Query(True, description="Include public documents"),
+    collection_id: Optional[str] = Query(None, description="Filter by collection"),
+    status: Optional[str] = Query(None, description="Filter by status"),
     sort_by: str = Query("updated_at", description="Field to sort by"),
-    sort_order: str = Query("desc", description="Sort order (asc or desc)"),
+    sort_dir: str = Query("desc", description="Sort direction (asc, desc)"),
     page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(20, ge=1, le=100, description="Results per page"),
-    db: AsyncSession = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_user_optional)
+    page_size: int = Query(20, ge=1, le=100, description="Results per page"),
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
 ):
     """
-    Get a list of documents with optional filtering.
+    Belgeleri listeler
     
-    You can search documents by text, filter by tags or collection, and control pagination.
+    Parametreler:
+    - **search**: Belge başlığı/içeriğinde arama yapmak için sorgu
+    - **tags**: Etiketlere göre filtreleme
+    - **collection_id**: Koleksiyona göre filtreleme
+    - **status**: Duruma göre filtreleme
+    - **sort_by**: Sıralama alanı (title, created_at, updated_at, vb.)
+    - **sort_dir**: Sıralama yönü (asc, desc)
+    - **page**: Sayfa numarası
+    - **page_size**: Sayfa başına sonuç sayısı
     
-    Returns a list of documents the user has access to, including:
-    - User's own documents
-    - Documents shared with the user
-    - Public documents (if include_public=True)
+    Dönüş:
+    - DocumentListResponse: Belge listesi ve meta veriler
     """
-    # Implementation goes here...
-    return [{"id": 1, "title": "Example Document"}]
+    try:
+        # Belgeleri getir
+        documents = await document_service.list_documents(
+            db=db,
+            user_id=current_user["id"],
+            search=search,
+            tags=tags,
+            collection_id=collection_id,
+            status=status,
+            sort_by=sort_by,
+            sort_dir=sort_dir,
+            page=page,
+            page_size=page_size
+        )
+        
+        # Audit log kaydı
+        await audit_service.log_event(
+            event_type=AuditLogType.DATA,
+            user_id=current_user["id"],
+            action="list",
+            resource_type="documents",
+            status="success",
+            details={
+                "search": search,
+                "tags": tags,
+                "collection_id": collection_id,
+                "status": status,
+                "page": page,
+                "page_size": page_size
+            },
+            db=db
+        )
+        
+        return documents
+    
+    except Exception as e:
+        logger.error(f"Error listing documents: {str(e)}")
+        
+        # Audit log kaydı
+        await audit_service.log_event(
+            event_type=AuditLogType.DATA,
+            user_id=current_user["id"],
+            action="list",
+            resource_type="documents",
+            status="failure",
+            details={
+                "error": str(e),
+                "search": search,
+                "tags": tags,
+                "collection_id": collection_id
+            },
+            db=db
+        )
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while listing documents: {str(e)}"
+        )
 
-@router.get("/{document_id}", response_model=DocumentResponse, summary="Get document details", 
-    description="Get details of a specific document")
+@router.get("/{document_id}", response_model=DocumentResponse)
 async def get_document(
-    document_id: int,
-    include_content: bool = Query(False, description="Whether to include the document content"),
-    db: AsyncSession = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_user_optional)
+    document_id: str,
+    include_content: bool = Query(False, description="Include document content"),
+    current_user: Dict[str, Any] = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_db)
 ):
     """
-    Get details of a specific document by ID.
+    Belge detaylarını getirir
     
-    - **document_id**: The ID of the document to retrieve
-    - **include_content**: Whether to include the document content in the response
+    Parametreler:
+    - **document_id**: Belge ID
+    - **include_content**: Belge içeriği dahil edilsin mi
     
-    Returns the document details if the user has access to it.
+    Dönüş:
+    - DocumentResponse: Belge detayları
     """
-    # Implementation goes here...
-    return {"id": document_id, "title": "Example Document"}
+    try:
+        # Belgeyi getir
+        document = await document_service.get_document(
+            db=db,
+            document_id=document_id,
+            user_id=current_user["id"] if current_user else None,
+            include_content=include_content
+        )
+        
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found"
+            )
+        
+        # Audit log kaydı
+        if current_user:
+            await audit_service.log_event(
+                event_type=AuditLogType.DATA,
+                user_id=current_user["id"],
+                action="view",
+                resource_type="document",
+                resource_id=document_id,
+                status="success",
+                db=db
+            )
+        
+        return document
+    
+    except HTTPException:
+        raise
+        
+    except Exception as e:
+        logger.error(f"Error getting document: {str(e)}")
+        
+        # Audit log kaydı
+        if current_user:
+            await audit_service.log_event(
+                event_type=AuditLogType.DATA,
+                user_id=current_user["id"],
+                action="view",
+                resource_type="document",
+                resource_id=document_id,
+                status="failure",
+                details={"error": str(e)},
+                db=db
+            )
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while getting document: {str(e)}"
+        )
 
-@router.put("/{document_id}", response_model=DocumentResponse, summary="Update document", 
-    description="Update an existing document")
+@router.post("/", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+async def create_document(
+    request: Request,
+    file: UploadFile = File(...),
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    tags: Optional[str] = Form(None),
+    collection_id: Optional[str] = Form(None),
+    is_public: bool = Form(False),
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Yeni bir belge oluşturur
+    
+    Parametreler:
+    - **file**: Yüklenecek dosya
+    - **title**: Belge başlığı
+    - **description**: Belge açıklaması (opsiyonel)
+    - **tags**: Virgülle ayrılmış etiketler (opsiyonel)
+    - **collection_id**: Koleksiyon ID (opsiyonel)
+    - **is_public**: Herkese açık mı
+    
+    Dönüş:
+    - DocumentResponse: Oluşturulan belge
+    """
+    try:
+        # IP adresini al
+        client_ip = request.client.host if request.client else None
+        
+        # Form verilerini hazırla
+        document_data = DocumentCreate(
+            title=title,
+            description=description,
+            tags=tags.split(",") if tags else [],
+            collection_id=collection_id,
+            is_public=is_public
+        )
+        
+        # Dosyayı yükle ve belgeyi oluştur
+        document = await document_service.create_document(
+            db=db,
+            document_data=document_data,
+            file=file,
+            user_id=current_user["id"],
+            organization_id=current_user.get("organization_id")
+        )
+        
+        # Audit log kaydı
+        await audit_service.log_event(
+            event_type=AuditLogType.DATA,
+            user_id=current_user["id"],
+            action="create",
+            resource_type="document",
+            resource_id=document.id,
+            status="success",
+            details={
+                "title": title,
+                "is_public": is_public,
+                "file_name": file.filename,
+                "content_type": file.content_type
+            },
+            ip_address=client_ip,
+            db=db
+        )
+        
+        return document
+    
+    except Exception as e:
+        logger.error(f"Error creating document: {str(e)}")
+        
+        # Audit log kaydı
+        await audit_service.log_event(
+            event_type=AuditLogType.DATA,
+            user_id=current_user["id"],
+            action="create",
+            resource_type="document",
+            status="failure",
+            details={
+                "error": str(e),
+                "title": title,
+                "file_name": file.filename
+            },
+            ip_address=client_ip,
+            db=db
+        )
+        
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while creating document: {str(e)}"
+        )
+
+@router.put("/{document_id}", response_model=DocumentResponse)
 async def update_document(
-    document_id: int,
-    document: DocumentUpdate = Body(..., description="Updated document data"),
-    db: AsyncSession = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_active_user)
+    document_id: str,
+    document_update: DocumentUpdate,
+    current_user: Dict[str, Any] = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
 ):
     """
-    Update an existing document.
+    Belge bilgilerini günceller
     
-    - **document_id**: The ID of the document to update
-    - **document**: The updated document data
+    Parametreler:
+    - **document_id**: Güncellenecek belge ID
+    - **document_update**: Güncellenecek alanlar
     
-    Returns the updated document information.
+    Dönüş:
+    - DocumentResponse: Güncellenen belge
     """
-    # Implementation goes here...
-    return {"id": document_id, "title": document.title or "Updated Document"}
-
-@router.delete("/{document_id}", summary="Delete document", 
-    description="Delete a document")
-async def delete_document(
-    document_id: int,
-    permanently: bool = Query(False, description="Whether to permanently delete the document"),
-    db: AsyncSession = Depends(get_db),
-    current_user: Dict[str, Any] = Depends(get_current_active_user)
-):
-    """
-    Delete a document.
-    
-    - **document_id**: The ID of the document to delete
-    - **permanently**: If True, permanently delete the document. If False, move it to trash.
-    
-    Returns a success message if the document was deleted.
-    """
-    # Implementation goes here...
-    return {"message": "Document deleted successfully"}
-
-# Rest of the document API endpoints would follow...
+    try:
+        # Belgenin mevcut olduğunu ve erişim izni olduğunu kontrol et
+        existing_document = await document_service.get_document(
+            db=db,
+            document_id=document_id,
+            user_id=current_user["id"]
+        )
+        
+        if not existing_document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found or access denied"
+            )
+        
+        # Belgeyi güncelle
+        document = await document_service.update_document(
+            db=db,
+            document_id=document_id,
+            document_update=document_update,
+            user_id=current_user["id"]
+        )
+        
+        # Audit log kaydı
+        await audit_service.log_event(
+            event_type=AuditLogType.DATA,
+            user_id=current_user["id"],
+            action="update",
+            resource_type="document",
+            resource_id=document_id,
+            status="success",
+            details={
+                "updated_fields": document_update.dict(exclude_unset=True)
+            },
+            db=
