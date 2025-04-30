@@ -1,16 +1,18 @@
 {
   "short_name": "RAG Base",
-  "name": "RAG Base Document Management",
+  "name": "RAG Base - Retrieval Augmented Generation Platform",
+  "description": "An advanced platform for document search and AI-powered retrieval",
   "icons": [
     {
       "src": "favicon.ico",
-      "sizes": "64x64",
+      "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
     },
     {
       "src": "logo192.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "purpose": "any maskable"
     },
     {
       "src": "logo512.png",
@@ -21,50 +23,61 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#2563eb",
+  "theme_color": "#0d6efd",
   "background_color": "#ffffff",
-  "orientation": "any",
-  "description": "RAG Base Document Management System",
-  "screenshots": [
-    {
-      "src": "screenshots/desktop1.png",
-      "type": "image/png",
-      "sizes": "1280x800",
-      "form_factor": "wide"
-    },
-    {
-      "src": "screenshots/desktop2.png",
-      "type": "image/png",
-      "sizes": "1280x800",
-      "form_factor": "wide"
-    },
-    {
-      "src": "screenshots/mobile1.png",
-      "type": "image/png",
-      "sizes": "320x640",
-      "form_factor": "narrow"
-    },
-    {
-      "src": "screenshots/mobile2.png",
-      "type": "image/png",
-      "sizes": "320x640",
-      "form_factor": "narrow"
-    }
-  ],
+  "orientation": "portrait-primary",
+  "categories": ["productivity", "business", "ai", "documents"],
   "shortcuts": [
     {
-      "name": "Search Documents",
-      "short_name": "Search",
-      "description": "Open the search page",
-      "url": "/search",
-      "icons": [{ "src": "icons/search.png", "sizes": "96x96" }]
+      "name": "New Query",
+      "short_name": "Query",
+      "description": "Start a new query",
+      "url": "/query",
+      "icons": [{ "src": "/icons/query.png", "sizes": "192x192" }]
     },
     {
       "name": "Upload Document",
       "short_name": "Upload",
       "description": "Upload a new document",
-      "url": "/documents/upload",
-      "icons": [{ "src": "icons/upload.png", "sizes": "96x96" }]
+      "url": "/documents?action=upload",
+      "icons": [{ "src": "/icons/upload.png", "sizes": "192x192" }]
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/dashboard.png",
+      "type": "image/png",
+      "sizes": "1280x720",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screenshots/mobile.png",
+      "type": "image/png",
+      "sizes": "750x1334",
+      "form_factor": "narrow"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/documents?action=upload",
+      "accept": {
+        "application/pdf": [".pdf"],
+        "text/plain": [".txt"],
+        "application/msword": [".doc"],
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"]
+      }
+    }
+  ],
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=com.ragbase.app",
+      "id": "com.ragbase.app"
+    },
+    {
+      "platform": "itunes",
+      "url": "https://apps.apple.com/app/ragbase/id1234567890"
+    }
+  ],
+  "prefer_related_applications": false
 }

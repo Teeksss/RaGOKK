@@ -1,0 +1,169 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Run ESLint
+        run: npm run lint
+        
+      - name: Run Prettier Check
+        run: npm run format:check
+
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Run Tests
+        run: npm run test:coverage
+        
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage/
+          
+      - name: Check Test Coverage
+        run: |
+          COVERAGE=$(node -e "const fs=require('fs'); const coverage=JSON.parse(fs.readFileSync('./coverage/coverage-summary.json')); console.log(coverage.total.lines.pct)")
+          if (( $(echo "$COVERAGE < 70" | bc -l) )); then
+            echo "Test coverage is below 70%: $COVERAGE%"
+            exit 1
+          fi
+          echo "Test coverage is $COVERAGE%"
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Build
+        run: npm run build
+        
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-files
+          path: build/
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        
+      - name: Install Snyk
+        run: npm install -g snyk
+        
+      - name: Run Snyk to check for vulnerabilities
+        run: snyk test
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: security-scan
+    if: github.ref == 'refs/heads/develop'
+    environment:
+      name: staging
+      url: https://staging.ragbase.com
+    steps:
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-files
+          path: build
+          
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          
+      - name: Deploy to S3
+        run: |
+          aws s3 sync build/ s3://${{ secrets.S3_BUCKET_STAGING }} --delete
+          
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CF_DISTRIBUTION_ID_STAGING }} --paths "/*"
+
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: security-scan
+    if: github.ref == 'refs/heads/main'
+    environment:
+      name: production
+      url: https://app.ragbase.com
+    steps:
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-files
+          path: build
+          
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          
+      - name: Deploy to S3
+        run: |
+          aws s3 sync build/ s3://${{ secrets.S3_BUCKET_PRODUCTION }} --delete
+          
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CF_DISTRIBUTION_ID_PRODUCTION }} --paths "/*"

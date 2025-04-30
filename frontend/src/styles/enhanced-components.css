@@ -1,0 +1,362 @@
+/* Last reviewed: 2025-04-30 10:37:40 UTC (User: Teeksss) */
+
+/* ===== Gelişmiş Arama Çubuğu Stilleri ===== */
+.enhanced-search-bar {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.search-input-container {
+  position: relative;
+}
+
+.search-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 0 0 0.25rem 0.25rem;
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.dark-theme .search-suggestions {
+  background-color: #343a40;
+  border-color: #495057;
+}
+
+.suggestions-list {
+  padding: 0.5rem 0;
+}
+
+.suggestion-item {
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.suggestion-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark-theme .suggestion-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-label {
+  font-weight: 600;
+}
+
+.filter-value {
+  font-weight: normal;
+}
+
+.recent-searches {
+  margin-top: 0.5rem;
+}
+
+.recent-searches-header {
+  margin-bottom: 0.25rem;
+}
+
+.recent-searches-list {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.filter-menu {
+  min-width: 250px;
+}
+
+/* ===== Onboarding Stilleri ===== */
+.onboarding-modal .modal-body {
+  padding: 1.5rem;
+}
+
+.onboarding-step-title {
+  color: var(--bs-primary);
+  margin-bottom: 1rem;
+}
+
+.onboarding-description {
+  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
+}
+
+.onboarding-image {
+  max-height: 250px;
+  margin: 1rem auto;
+  display: block;
+}
+
+.onboarding-video {
+  max-height: 250px;
+  width: 100%;
+  border-radius: 0.25rem;
+}
+
+.step-completed {
+  color: #198754;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+}
+
+.feature-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(var(--bs-primary-rgb), 0.1);
+  color: var(--bs-primary);
+  font-size: 1.2rem;
+}
+
+.confetti-container {
+  position: relative;
+  min-height: 100px;
+}
+
+@media (max-width: 768px) {
+  .onboarding-media {
+    margin-top: 1.5rem;
+  }
+}
+
+/* ===== İçerik Görüntüleyici Stilleri ===== */
+.content-viewer {
+  position: relative;
+  border-radius: 0.25rem;
+  overflow: hidden;
+  height: 500px; /* Varsayılan yükseklik */
+}
+
+.content-viewer.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1050;
+}
+
+.content-pdf {
+  overflow: auto;
+}
+
+.pdf-container {
+  display: flex;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.pdf-navigation {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.dark-theme .pdf-navigation {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.content-code pre {
+  margin: 0;
+}
+
+.content-video video,
+.content-audio audio {
+  width: 100%;
+}
+
+/* ===== Dokunmatik Hareket Stilleri ===== */
+.touch-gesture-container {
+  position: relative;
+  touch-action: none; /* Tarayıcı varsayılan dokunma davranışlarını devre dışı bırak */
+}
+
+/* ===== Sayfa Geçiş Stilleri ===== */
+.page-transition {
+  position: relative;
+}
+
+/* Fade Geçişi */
+.fade-enter {
+  opacity: 0;
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity 300ms ease-in-out;
+}
+
+.fade-exit {
+  opacity: 1;
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity 300ms ease-in-out;
+}
+
+/* Sola Kaydırma Geçişi */
+.slide-left-enter {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.slide-left-enter-active {
+  transform: translateX(0);
+  opacity: 1;
+  transition: all 300ms ease-out;
+}
+
+.slide-left-exit {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.slide-left-exit-active {
+  transform: translateX(-100%);
+  opacity: 0;
+  transition: all 300ms ease-in;
+}
+
+/* Sağa Kaydırma Geçişi */
+.slide-right-enter {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.slide-right-enter-active {
+  transform: translateX(0);
+  opacity: 1;
+  transition: all 300ms ease-out;
+}
+
+.slide-right-exit {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.slide-right-exit-active {
+  transform: translateX(100%);
+  opacity: 0;
+  transition: all 300ms ease-in;
+}
+
+/* Yukarı Kaydırma Geçişi */
+.slide-up-enter {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+.slide-up-enter-active {
+  transform: translateY(0);
+  opacity: 1;
+  transition: all 300ms ease-out;
+}
+
+.slide-up-exit {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.slide-up-exit-active {
+  transform: translateY(-100%);
+  opacity: 0;
+  transition: all 300ms ease-in;
+}
+
+/* Aşağı Kaydırma Geçişi */
+.slide-down-enter {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+.slide-down-enter-active {
+  transform: translateY(0);
+  opacity: 1;
+  transition: all 300ms ease-out;
+}
+
+.slide-down-exit {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.slide-down-exit-active {
+  transform: translateY(100%);
+  opacity: 0;
+  transition: all 300ms ease-in;
+}
+
+/* Ölçekleme Geçişi */
+.scale-enter {
+  transform: scale(0.8);
+  opacity: 0;
+}
+
+.scale-enter-active {
+  transform: scale(1);
+  opacity: 1;
+  transition: all 300ms ease-out;
+}
+
+.scale-exit {
+  transform: scale(1);
+  opacity: 1;
+}
+
+.scale-exit-active {
+  transform: scale(0.8);
+  opacity: 0;
+  transition: all 300ms ease-in;
+}
+
+/* ===== Mobil-Öncelikli İyileştirmeler ===== */
+@media (max-width: 576px) {
+  .filter-menu {
+    width: 100%;
+  }
+  
+  .active-filters {
+    margin-top: 0.5rem;
+  }
+  
+  .onboarding-step-title {
+    font-size: 1.5rem;
+  }
+  
+  .onboarding-description {
+    font-size: 1rem;
+  }
+}
+
+/* Dokunmatik cihazlar için daha büyük tıklama alanları */
+@media (pointer: coarse) {
+  .btn, .form-control, .form-select, .nav-link, .dropdown-item {
+    min-height: 40px;
+    padding: 0.5rem 1rem;
+  }
+  
+  .form-check-label {
+    padding: 0.5rem 0;
+  }
+  
+  .suggestion-item, .dropdown-item {
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+  }
+}

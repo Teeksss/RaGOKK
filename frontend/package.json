@@ -1,40 +1,45 @@
 {
-  "name": "frontend",
-  "version": "0.1.0",
-  "private": true,
-  "dependencies": {
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4",
-    "chart.js": "^4.4.3",
-    "react-chartjs-2": "^5.2.0"
-  },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "start": "craco start",
+    "build": "GENERATE_SOURCEMAP=false craco build",
+    "build:analyze": "ANALYZE=true npm run build",
+    "test": "craco test",
+    "eject": "react-scripts eject",
+    "lint": "eslint 'src/**/*.{js,jsx,ts,tsx}'",
+    "lint:fix": "eslint 'src/**/*.{js,jsx,ts,tsx}' --fix",
+    "format": "prettier --write 'src/**/*.{js,jsx,ts,tsx,css,scss,md}'",
+    "format:check": "prettier --check 'src/**/*.{js,jsx,ts,tsx,css,scss,md}'",
+    "typecheck": "tsc --noEmit",
+    "bundle:report": "source-map-explorer 'build/static/js/*.js'",
+    "bundle:size": "bundlesize"
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+  "bundlesize": [
+    {
+      "path": "./build/static/js/main.*.js",
+      "maxSize": "180 kB"
+    },
+    {
+      "path": "./build/static/js/*.chunk.js",
+      "maxSize": "244 kB"
+    },
+    {
+      "path": "./build/static/css/main.*.css",
+      "maxSize": "40 kB"
+    }
+  ],
+  "dependencies": {
+    // Güncel bağımlılıklar...
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+  "devDependencies": {
+    "@craco/craco": "^7.0.0",
+    "webpack-bundle-analyzer": "^4.5.0",
+    "compression-webpack-plugin": "^10.0.0",
+    "terser-webpack-plugin": "^5.3.6",
+    "source-map-explorer": "^2.5.2",
+    "bundlesize": "^0.18.1",
+    "babel-plugin-transform-imports": "^2.0.0",
+    "autoprefixer": "^10.4.13",
+    "cssnano": "^5.1.14",
+    // Diğer dev bağımlılıkları...
   }
 }

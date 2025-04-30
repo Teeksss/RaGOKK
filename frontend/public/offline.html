@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Base - You're Offline</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #f8f9fa;
+            color: #343a40;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 600px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+        
+        .offline-icon {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 24px;
+            color: #6c757d;
+        }
+        
+        h1 {
+            font-size: 28px;
+            margin-bottom: 16px;
+            color: #343a40;
+        }
+        
+        p {
+            font-size: 16px;
+            line-height: 1.5;
+            margin-bottom: 24px;
+            color: #6c757d;
+        }
+        
+        .btn {
+            display: inline-block;
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.2s;
+        }
+        
+        .btn:hover {
+            background-color: #0b5ed7;
+        }
+        
+        .cached-content {
+            margin-top: 30px;
+            border-top: 1px solid #dee2e6;
+            padding-top: 20px;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #212529;
+                color: #f8f9fa;
+            }
+            
+            .container {
+                background-color: #343a40;
+            }
+            
+            h1 {
+                color: #f8f9fa;
+            }
+            
+            p {
+                color: #ced4da;
+            }
+            
+            .btn {
+                background-color: #0d6efd;
+            }
+            
+            .btn:hover {
+                background-color: #0b5ed7;
+            }
+            
+            .cached-content {
+                border-top-color: #495057;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <svg class="offline-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+            <path d="M10.706 3.294A12.545 12.545 0 0 0 8 3C5.259 3 2.723 3.882.663 5.379a.485.485 0 0 0-.048.736.518.518 0 0 0 .668.05A11.448 11.448 0 0 1 8 4c.63 0 1.249.05 1.852.148l.854-.854zM8 6c-1.905 0-3.68.56-5.166 1.526a.48.48 0 0 0-.063.745.525.525 0 0 0 .652.065 8.448 8.448 0 0 1 4.577-1.336 8.497 8.497 0 0 1 3.188.62l.837-.836A9.517 9.517 0 0 0 8 6zm-6 4c0 .535.05 1.07.149 1.59L1.255 12.47A4.49 4.49 0 0 1 1 11a5 5 0 0 1 1.1-3.1 4.488 4.488 0 0 1-.385-.408L.5 6.6A5.536 5.536 0 0 0 2 11zm6-1c.273 0 .54.03.807.08l3.243-2.434A5.992 5.992 0 0 0 8 6c-1.66 0-3 1.34-3 3s1.34 3 3 3z"/>
+            <path d="M9 10a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+        </svg>
+        <h1>You're Offline</h1>
+        <p>Looks like you've lost your internet connection. But don't worry, some features of RAG Base are still available offline.</p>
+        <p>You can still access previously viewed documents and recent query results.</p>
+        <button class="btn" onclick="tryReconnect()">Try to Reconnect</button>
+        
+        <div class="cached-content">
+            <h2>Available Offline Content</h2>
+            <p>The content you've previously accessed will be listed here.</p>
+            <div id="offline-content-list">
+                <!-- This will be populated dynamically by the service worker -->
+                <p>Loading cached content...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Try reconnect functionality
+        function tryReconnect() {
+            window.location.reload();
+        }
+        
+        // Check connection status every 30 seconds
+        setInterval(() => {
+            if (navigator.onLine) {
+                window.location.href = '/';
+            }
+        }, 30000);
+        
+        // Attempt to list cached resources
+        if ('caches' in window) {
+            caches.keys().then(cacheNames => {
+                const contentList = document.getElementById('offline-content-list');
+                if (cacheNames.length === 0) {
+                    contentList.innerHTML = '<p>No cached content available.</p>';
+                    return;
+                }
+                
+                let html = '<ul>';
+                
+                // For simplicity, just showing cache names
+                // In a real implementation, would show actual cached URLs with friendly names
+                cacheNames.forEach(cacheName => {
+                    html += `<li>${cacheName}</li>`;
+                });
+                
+                html += '</ul>';
+                contentList.innerHTML = html;
+            }).catch(error => {
+                console.error('Error listing caches:', error);
+            });
+        }
+    </script>
+</body>
+</html>

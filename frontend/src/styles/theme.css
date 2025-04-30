@@ -1,0 +1,232 @@
+/* Last reviewed: 2025-04-30 08:34:14 UTC (User: Teeksss) */
+
+/* Font size variables */
+:root {
+  --font-size-base: 1rem;
+  --font-size-small: 0.875rem;
+  --font-size-large: 1.125rem;
+}
+
+/* Font size adjustments */
+.font-size-small {
+  --font-size-base: 0.875rem;
+  font-size: var(--font-size-base);
+}
+
+.font-size-medium {
+  --font-size-base: 1rem;
+  font-size: var(--font-size-base);
+}
+
+.font-size-large {
+  --font-size-base: 1.125rem;
+  font-size: var(--font-size-base);
+}
+
+/* Apply font size to elements */
+body {
+  font-size: var(--font-size-base);
+}
+
+.font-size-small h1 {
+  font-size: calc(var(--font-size-base) * 2);
+}
+
+.font-size-small h2 {
+  font-size: calc(var(--font-size-base) * 1.75);
+}
+
+.font-size-small h3 {
+  font-size: calc(var(--font-size-base) * 1.5);
+}
+
+.font-size-medium h1 {
+  font-size: calc(var(--font-size-base) * 2.25);
+}
+
+.font-size-medium h2 {
+  font-size: calc(var(--font-size-base) * 2);
+}
+
+.font-size-medium h3 {
+  font-size: calc(var(--font-size-base) * 1.75);
+}
+
+.font-size-large h1 {
+  font-size: calc(var(--font-size-base) * 2.5);
+}
+
+.font-size-large h2 {
+  font-size: calc(var(--font-size-base) * 2.25);
+}
+
+.font-size-large h3 {
+  font-size: calc(var(--font-size-base) * 2);
+}
+
+/* Accent color styles */
+.accent-blue {
+  --accent-color: #0d6efd;
+  --accent-color-light: #cfe2ff;
+  --accent-color-dark: #0a58ca;
+}
+
+.accent-green {
+  --accent-color: #198754;
+  --accent-color-light: #d1e7dd;
+  --accent-color-dark: #0f5132;
+}
+
+.accent-purple {
+  --accent-color: #6f42c1;
+  --accent-color-light: #e2d9f3;
+  --accent-color-dark: #5a23c8;
+}
+
+.accent-orange {
+  --accent-color: #fd7e14;
+  --accent-color-light: #fff3cd;
+  --accent-color-dark: #ca6510;
+}
+
+.accent-teal {
+  --accent-color: #20c997;
+  --accent-color-light: #d1f2eb;
+  --accent-color-dark: #159a75;
+}
+
+/* Apply accent colors */
+.accent-blue .btn-primary,
+.accent-blue .bg-primary {
+  background-color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+.accent-green .btn-primary,
+.accent-green .bg-primary {
+  background-color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+.accent-purple .btn-primary,
+.accent-purple .bg-primary {
+  background-color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+.accent-orange .btn-primary,
+.accent-orange .bg-primary {
+  background-color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+.accent-teal .btn-primary,
+.accent-teal .bg-primary {
+  background-color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+/* High contrast mode */
+.high-contrast {
+  --contrast-bg: #000;
+  --contrast-text: #fff;
+  --contrast-border: #fff;
+}
+
+.high-contrast.dark-theme {
+  --contrast-bg: #000;
+  --contrast-text: #fff;
+  --contrast-border: #fff;
+}
+
+.high-contrast.light-theme {
+  --contrast-bg: #fff;
+  --contrast-text: #000;
+  --contrast-border: #000;
+}
+
+.high-contrast .card {
+  border: 2px solid var(--contrast-border);
+}
+
+.high-contrast .btn {
+  border-width: 2px;
+}
+
+.high-contrast .form-control {
+  border-width: 2px;
+}
+
+/* Dark theme customizations */
+.dark-theme {
+  color-scheme: dark;
+}
+
+.dark-theme .card {
+  background-color: #1e1e1e;
+  border-color: #2c2c2c;
+}
+
+.dark-theme .modal-content {
+  background-color: #1e1e1e;
+  color: #f8f9fa;
+}
+
+.dark-theme .form-control,
+.dark-theme .form-select {
+  background-color: #252525;
+  border-color: #2c2c2c;
+  color: #e0e0e0;
+}
+
+.dark-theme .form-control:focus,
+.dark-theme .form-select:focus {
+  background-color: #2c2c2c;
+  color: #e0e0e0;
+}
+
+/* Animation for accent color selector */
+.accent-color-option {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.accent-color-option:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+}
+
+.accent-color-option.selected {
+  transform: scale(1.1);
+  box-shadow: 0 0 10px var(--accent-color);
+}
+
+/* Multimodal Query specific styles */
+.preview-container {
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+}
+
+.preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dark-theme .preview-container {
+  border-color: #2c2c2c;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .preview-item {
+    width: 50%;
+  }
+}
+
+@media (max-width: 576px) {
+  .preview-item {
+    width: 100%;
+  }
+}

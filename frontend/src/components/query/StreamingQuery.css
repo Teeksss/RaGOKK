@@ -1,0 +1,165 @@
+/* Streaming yanıt komponentleri için CSS */
+
+/* Ana container */
+.streaming-result {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Yanıt içeriği */
+.answer-content {
+  min-height: 100px;
+  max-height: 500px;
+  overflow-y: auto;
+  padding: 15px;
+  background-color: #fafafa;
+  border-radius: 4px;
+  border: 1px solid #eaeaea;
+  line-height: 1.6;
+  position: relative;
+  transition: background-color 0.3s ease;
+}
+
+/* Blinking cursor */
+.cursor-blink {
+  display: inline-block;
+  animation: blink 1s step-start infinite;
+  font-weight: bold;
+  color: #333;
+  margin-left: 1px;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Source highlighting */
+.highlight-source-1 {
+  background-color: rgba(13, 110, 253, 0.05);
+  border-left: 3px solid #0d6efd;
+}
+
+.highlight-source-2 {
+  background-color: rgba(25, 135, 84, 0.05);
+  border-left: 3px solid #198754;
+}
+
+.highlight-source-3 {
+  background-color: rgba(220, 53, 69, 0.05);
+  border-left: 3px solid #dc3545;
+}
+
+.highlight-source-4 {
+  background-color: rgba(111, 66, 193, 0.05);
+  border-left: 3px solid #6f42c1;
+}
+
+.highlight-source-5 {
+  background-color: rgba(253, 126, 20, 0.05);
+  border-left: 3px solid #fd7e14;
+}
+
+.highlight-source-6 {
+  background-color: rgba(32, 201, 151, 0.05);
+  border-left: 3px solid #20c997;
+}
+
+/* Source badges */
+.source-badge {
+  padding: 5px 8px;
+  margin-right: 5px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.source-badge:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* Source colors */
+.source-blue {
+  background-color: #cfe2ff;
+  color: #0a58ca;
+}
+
+.source-green {
+  background-color: #d1e7dd;
+  color: #0f5132;
+}
+
+.source-red {
+  background-color: #f8d7da;
+  color: #842029;
+}
+
+.source-purple {
+  background-color: #e2d9f3;
+  color: #5a23c8;
+}
+
+.source-orange {
+  background-color: #fff3cd;
+  color: #664d03;
+}
+
+.source-teal {
+  background-color: #d1f2eb;
+  color: #117a65;
+}
+
+/* Current source indicator */
+.current-source-indicator {
+  margin-top: 10px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  background-color: #f8f9fa;
+  border-left: 3px solid #6c757d;
+  font-size: 0.9rem;
+}
+
+.current-source-indicator.source-blue {
+  border-left-color: #0d6efd;
+}
+
+.current-source-indicator.source-green {
+  border-left-color: #198754;
+}
+
+.current-source-indicator.source-red {
+  border-left-color: #dc3545;
+}
+
+.current-source-indicator.source-purple {
+  border-left-color: #6f42c1;
+}
+
+.current-source-indicator.source-orange {
+  border-left-color: #fd7e14;
+}
+
+.current-source-indicator.source-teal {
+  border-left-color: #20c997;
+}
+
+/* References container */
+.references-container {
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  margin-top: 15px;
+  border: 1px solid #eaeaea;
+}
+
+/* Query text */
+.query-text {
+  font-weight: 500;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eaeaea;
+  margin-bottom: 15px;
+}

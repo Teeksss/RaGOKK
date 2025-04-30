@@ -1,20 +1,62 @@
 {
-  "feedback": {
-    "title": "Bu cevabı nasıl buldunuz?",
-    "helpful": "Yararlı",
-    "notHelpful": "Yardımcı değil",
-    "pleaseSelectRating": "Lütfen bir derecelendirme seçin",
-    "thankYou": "Geri bildiriminiz için teşekkür ederiz!",
-    "submitError": "Geri bildirim gönderilirken bir hata oluştu",
-    "addComment": "Yorum ekle",
-    "commentPlaceholder": "Geri bildiriminizi buraya yazın...",
-    "submitted": "Geri bildiriminiz kaydedildi",
-    "ratings": {
-      "1": "Çok kötü",
-      "2": "Kötü",
-      "3": "Ortalama",
-      "4": "İyi",
-      "5": "Çok iyi"
+  "settings": {
+    "appearance": {
+      "transitions": {
+        "title": "Sayfa Geçiş Animasyonları",
+        "type": "Animasyon Tipi",
+        "fade": "Solma",
+        "slideLeft": "Sola Kaydırma",
+        "slideRight": "Sağa Kaydırma",
+        "slideUp": "Yukarı Kaydırma",
+        "slideDown": "Aşağı Kaydırma",
+        "scale": "Ölçekleme",
+        "none": "Animasyon Yok",
+        "help": "Sayfalar arasında geçiş yaparken kullanılacak animasyon tipi.",
+        "preview": "Önizleme",
+        "previewContent": "Bu, seçilen animasyon tipi ile görüntülenecek içeriğin önizlemesidir."
+      }
+    }
+  },
+  
+  "performance": {
+    "warning": "Performans Uyarısı",
+    "slowLoading": "Sayfa beklenenden daha yavaş yükleniyor. Düşük performans yaşayabilirsiniz.",
+    "slowResponse": "Sayfa etkileşimlere yavaş yanıt veriyor. Gecikmeler yaşayabilirsiniz.",
+    "highMemory": "Uygulama yüksek bellek kullanıyor. Sayfayı yenilemeyi düşünebilirsiniz.",
+    "refresh": "Sayfayı Yenile"
+  },
+  
+  "error": {
+    "boundary": {
+      "title": "Bir şeyler yanlış gitti",
+      "message": "Bu rahatsızlık için özür dileriz. Lütfen sayfayı yenilemeyi deneyin veya sorun devam ederse desteğe başvurun.",
+      "reload": "Sayfayı Yenile",
+      "goHome": "Ana Sayfaya Git",
+      "getHelp": "Yardım Al",
+      "componentError": "{{name}} bileşenini yüklerken hata oluştu",
+      "tryAgain": "Tekrar Dene"
+    },
+    "types": {
+      "network": "Ağ Hatası",
+      "networkMessage": "Sunucuya bağlanılamıyor. Lütfen internet bağlantınızı kontrol edin ve tekrar deneyin.",
+      "authorization": "Erişim Reddedildi",
+      "authorizationMessage": "Bu özelliğe erişim izniniz yok.",
+      "notFound": "Bulunamadı",
+      "notFoundMessage": "İstenen kaynak bulunamadı.",
+      "validation": "Doğrulama Hatası",
+      "validationMessage": "Veri formatında bir sorun var. Lütfen girişlerinizi kontrol edip tekrar deneyin."
+    }
+  },
+  
+  "analytics": {
+    "privacy": {
+      "title": "Analitik ve Gizlilik",
+      "description": "Hizmetlerimizi iyileştirmek için anonim kullanım verileri topluyoruz.",
+      "settings": "Analitik Tercihleri",
+      "enableAnalytics": "Kullanım İstatistiklerini Etkinleştir",
+      "enableAnalyticsHelp": "Bu seçeneği kapatırsanız, uygulama kullanımınız hakkında hiçbir veri toplanmayacaktır.",
+      "anonymizeData": "Verileri Anonimleştir",
+      "anonymizeDataHelp": "IP adresiniz ve tanımlayıcı kullanıcı bilgileriniz kaydedilmeyecektir."
     }
   }
 }

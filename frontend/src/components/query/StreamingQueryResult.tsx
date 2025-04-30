@@ -1,42 +1,52 @@
-// Last reviewed: 2025-04-30 07:12:47 UTC (User: Teeksss)
+// Last reviewed: 2025-04-30 07:41:30 UTC (User: Teeksss)
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, Spinner, Badge, Alert, Button } from 'react-bootstrap';
-import { FaSync, FaQuestionCircle, FaInfoCircle, FaExternalLinkAlt } from 'react-icons/fa';
+import { Card, Button, Alert, Spinner, Badge } from 'react-bootstrap';
+import { FaSyncAlt, FaSearch, FaRegCopy, FaExternalLinkAlt, FaInfoCircle } from 'react-icons/fa';
+import { useToast } from '../../contexts/ToastContext';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
-import { useToast } from '../../contexts/ToastContext';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+import './StreamingQuery.css';
 
-// WebSocket URL
-const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8000';
+// Base WebSocket URL
+const WS_BASE_URL = process.env.REACT_APP_WS_BASE_URL || 'ws://localhost:8000';
 
 interface StreamingQueryResultProps {
   query: string;
-  filters?: any;
-  searchType?: string;
-  sources?: any[];
-  onComplete?: (answer: string, references: string[]) => void;
-  onViewDocument?: (documentId: string) => void;
-  token?: string;  // JWT token
+  accessToken?: string;
+  onComplete?: (answer: string) => void;
+  onSourceClick?: (sourceId: string, documentId: string) => void;
+  onRetry?: () => void;
+  filterDocumentIds?: string[];
 }
 
-interface SourceInfo {
-  document_id: string;
+interface Source {
+  id: string;
+  documentId: string;
   title: string;
-  page_number?: number;
   content: string;
-  source_id: string;
+  page?: number;
+  color?: string;
 }
 
-const StreamingQueryResult: React.FC<StreamingQueryResultProps> = ({ 
-  query, 
-  filters = {}, 
-  searchType = 'hybrid',
-  sources = [],
+interface StreamingChunk {
+  type: 'chunk' | 'info' | 'error';
+  content: string;
+  source_id?: string | null;
+  current_references?: string[];
+  done?: boolean;
+  metadata?: any;
+}
+
+const StreamingQueryResult: React.FC<StreamingQueryResultProps> = ({
+  query,
+  accessToken,
   onComplete,
-  onViewDocument,
-  token
+  onSourceClick,
+  onRetry,
+  filterDocumentIds = []
 }) => {
   const { t } = useTranslation();
   const { showToast } = useToast();
@@ -45,326 +55,304 @@ const StreamingQueryResult: React.FC<StreamingQueryResultProps> = ({
   const [answer, setAnswer] = useState<string>('');
   const [isStreaming, setIsStreaming] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [socketConnected, setSocketConnected] = useState<boolean>(false);
-  const [activeSourceId, setActiveSourceId] = useState<string | null>(null);
-  const [currentReferences, setCurrentReferences] = useState<string[]>([]);
-  const [sourceMap, setSourceMap] = useState<Record<string, SourceInfo>>({});
+  const [sourceMap, setSourceMap] = useState<Record<string, Source>>({});
+  const [currentSourceId, setCurrentSourceId] = useState<string | null>(null);
+  const [references, setReferences] = useState<string[]>([]);
   
-  // WebSocket referansı
+  // WebSocket ref
   const socketRef = useRef<WebSocket | null>(null);
   
-  // Renk sınıfları
-  const sourceColorClasses = [
-    'text-primary',
-    'text-success',
-    'text-danger',
-    'text-warning',
-    'text-info',
-    'text-dark',
-    'text-secondary'
+  // Result ref for scrolling
+  const resultRef = useRef<HTMLDivElement>(null);
+  
+  // Color palette for sources
+  const sourceColors = [
+    'source-blue',
+    'source-green',
+    'source-red',
+    'source-purple',
+    'source-orange',
+    'source-teal'
   ];
   
-  // WebSocket bağlantısını kur
+  // Start streaming on component mount
   useEffect(() => {
     startStreaming();
     
-    // Temizleme
     return () => {
+      // Clean up on component unmount
       if (socketRef.current) {
         socketRef.current.close();
         socketRef.current = null;
       }
     };
-  }, [query, filters, searchType]);
+  }, [query]);
   
-  // Kaynak haritası oluştur
-  useEffect(() => {
-    if (sources && sources.length > 0) {
-      const sourceMapping: Record<string, SourceInfo> = {};
-      
-      sources.forEach((source, index) => {
-        const sourceId = String(index + 1);
-        sourceMapping[sourceId] = {
-          document_id: source.document_id || '',
-          title: source.document_title || 'Belge',
-          page_number: source.metadata?.page_number,
-          content: source.content || '',
-          source_id: sourceId
-        };
-      });
-      
-      setSourceMap(sourceMapping);
-    }
-  }, [sources]);
-  
-  // Streaming başlat
+  // Start WebSocket connection
   const startStreaming = () => {
-    // Önceki bağlantıyı temizle
-    if (socketRef.current) {
-      socketRef.current.close();
-    }
-    
-    // State'i temizle
     setAnswer('');
-    setError(null);
     setIsStreaming(true);
-    setSocketConnected(false);
-    setActiveSourceId(null);
-    setCurrentReferences([]);
+    setError(null);
+    setCurrentSourceId(null);
+    setReferences([]);
+    
+    // Build query params
+    const params = new URLSearchParams();
+    params.append('query', query);
+    
+    // Add document filters if provided
+    if (filterDocumentIds && filterDocumentIds.length > 0) {
+      params.append('filters', JSON.stringify({ document_ids: filterDocumentIds }));
+    }
     
     try {
-      // Sorgu parametreleri
-      const queryParams = new URLSearchParams({
-        query: query
-      });
+      // Create WebSocket connection
+      const wsUrl = `${WS_BASE_URL}/api/v1/streaming/query?${params.toString()}`;
+      socketRef.current = new WebSocket(wsUrl);
       
-      // Ek filtreleri ekle
-      if (Object.keys(filters).length > 0) {
-        queryParams.append('filters', JSON.stringify(filters));
-      }
-      
-      // Arama türünü ekle
-      if (searchType) {
-        queryParams.append('search_type', searchType);
-      }
-      
-      // WebSocket bağlantısı oluştur
-      const socketUrl = `${WS_URL}/api/v1/streaming/query?${queryParams.toString()}`;
-      socketRef.current = new WebSocket(socketUrl);
-      
-      // Token ekle
-      if (token) {
-        socketRef.current.onopen = () => {
-          if (socketRef.current) {
-            socketRef.current.send(JSON.stringify({ token }));
-          }
-        };
-      }
-      
-      // Bağlantı açıldı
+      // Connection opened
       socketRef.current.onopen = () => {
-        setSocketConnected(true);
+        // Send authentication token if provided
+        if (accessToken) {
+          socketRef.current?.send(JSON.stringify({ token: accessToken }));
+        }
       };
       
-      // Mesaj geldi
+      // Listen for messages
       socketRef.current.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
+          const data: StreamingChunk = JSON.parse(event.data);
           
-          // Mesaj türüne göre işle
-          if (data.type === 'chunk') {
-            // Yanıt parçası
-            setAnswer(prev => prev + (data.content || ''));
-            
-            // Kaynaklar
-            if (data.current_references) {
-              setCurrentReferences(data.current_references);
-            }
-            
-            // Aktif kaynak
-            if (data.source_id !== undefined) {
-              setActiveSourceId(data.source_id);
-            }
-            
-            // Tamamlandı mı?
-            if (data.done) {
-              setIsStreaming(false);
-              if (onComplete) {
-                onComplete(answer + (data.content || ''), data.current_references || []);
+          switch (data.type) {
+            case 'chunk':
+              // Append content to answer
+              setAnswer(prev => prev + (data.content || ''));
+              
+              // Update source info
+              if (data.source_id !== undefined) {
+                setCurrentSourceId(data.source_id);
               }
-            }
-          } else if (data.type === 'info') {
-            // Bilgi mesajı
-            console.log('Info:', data.content);
-          } else if (data.type === 'error') {
-            // Hata mesajı
-            setError(data.content || 'An error occurred');
-            setIsStreaming(false);
+              
+              // Update references
+              if (data.current_references) {
+                setReferences(data.current_references);
+              }
+              
+              // Stream completed
+              if (data.done) {
+                setIsStreaming(false);
+                if (onComplete) {
+                  onComplete(answer + (data.content || ''));
+                }
+              }
+              break;
+              
+            case 'info':
+              // Information message
+              console.log('Info:', data.content);
+              
+              // Sources info
+              if (data.metadata?.sources) {
+                const sourcesMap: Record<string, Source> = {};
+                
+                data.metadata.sources.forEach((source: any, index: number) => {
+                  const sourceId = String(index + 1);
+                  sourcesMap[sourceId] = {
+                    id: sourceId,
+                    documentId: source.document_id || '',
+                    title: source.title || `Source ${sourceId}`,
+                    content: source.content || '',
+                    page: source.metadata?.page_number,
+                    color: sourceColors[index % sourceColors.length]
+                  };
+                });
+                
+                setSourceMap(sourcesMap);
+              }
+              break;
+              
+            case 'error':
+              // Error message
+              setError(data.content || 'An error occurred');
+              setIsStreaming(false);
+              break;
+          }
+          
+          // Scroll to bottom if needed
+          if (resultRef.current) {
+            resultRef.current.scrollTop = resultRef.current.scrollHeight;
           }
         } catch (err) {
           console.error('Error parsing WebSocket message:', err);
-          setError('Error parsing response data');
+          setError('Error processing response');
           setIsStreaming(false);
         }
       };
       
-      // Bağlantı kapandı
+      // Handle socket closing
       socketRef.current.onclose = (event) => {
-        setSocketConnected(false);
         setIsStreaming(false);
         
-        // Anormal kapanma
-        if (event.code !== 1000) {
-          setError(`WebSocket closed abnormally: ${event.reason || 'Unknown reason'}`);
+        // Abnormal close
+        if (event.code !== 1000 && !error) {
+          setError(`Connection closed: ${event.reason || 'Unknown reason'}`);
         }
       };
       
-      // Bağlantı hatası
+      // Handle connection error
       socketRef.current.onerror = () => {
-        setSocketConnected(false);
-        setIsStreaming(false);
         setError('WebSocket connection error');
+        setIsStreaming(false);
       };
       
     } catch (err) {
-      setError('Error setting up WebSocket connection');
+      console.error('Error setting up WebSocket connection:', err);
+      setError('Failed to connect to server');
       setIsStreaming(false);
-      console.error('WebSocket error:', err);
     }
   };
   
-  // Streaming yanıtı işle ve kaynakları renklendirme
-  const processStreamingAnswer = () => {
-    if (!answer) return '';
-    
-    // Kaynak referanslarını renklendirme
-    let processedText = answer;
-    
-    Object.keys(sourceMap).forEach((sourceId, index) => {
-      const colorClass = sourceColorClasses[index % sourceColorClasses.length];
-      const pattern = new RegExp(`\\[${sourceId}\\]`, 'g');
-      processedText = processedText.replace(
-        pattern, 
-        `<span class="${colorClass} source-reference" data-source="${sourceId}">[${sourceId}]</span>`
-      );
-    });
-    
-    return processedText;
+  // Copy result to clipboard
+  const handleCopyClick = () => {
+    navigator.clipboard.writeText(answer)
+      .then(() => showToast('success', t('query.copied')))
+      .catch(() => showToast('error', t('query.copyFailed')));
   };
   
-  // Referans tıklama işleyicisi
-  useEffect(() => {
-    const handleReferenceClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (target.classList.contains('source-reference')) {
-        const sourceId = target.getAttribute('data-source');
-        if (sourceId && sourceMap[sourceId] && onViewDocument) {
-          onViewDocument(sourceMap[sourceId].document_id);
-        }
-      }
-    };
-    
-    document.addEventListener('click', handleReferenceClick);
-    
-    return () => {
-      document.removeEventListener('click', handleReferenceClick);
-    };
-  }, [sourceMap, onViewDocument]);
-  
-  // Yeniden deneme
+  // Handle retry
   const handleRetry = () => {
-    startStreaming();
+    if (onRetry) {
+      onRetry();
+    } else {
+      startStreaming();
+    }
+  };
+  
+  // Render source badge
+  const renderSourceBadge = (sourceId: string) => {
+    const source = sourceMap[sourceId];
+    
+    if (!source) return null;
+    
+    return (
+      <Badge
+        key={sourceId}
+        className={`source-badge ${source.color || ''}`}
+        onClick={() => onSourceClick && source.documentId && onSourceClick(sourceId, source.documentId)}
+        style={{ cursor: onSourceClick ? 'pointer' : 'default' }}
+      >
+        {source.title}
+        {source.page && ` (${t('query.page')} ${source.page})`}
+      </Badge>
+    );
   };
   
   return (
-    <Card className="mb-4 shadow-sm streaming-query-result">
-      <Card.Header className="d-flex justify-content-between align-items-center bg-light">
-        <div className="d-flex align-items-center">
-          <FaQuestionCircle className="text-primary me-2" />
-          <h5 className="mb-0">{t('query.question')}</h5>
+    <Card className="streaming-result mb-4">
+      <Card.Header className="d-flex justify-content-between align-items-center">
+        <div>
+          <FaSearch className="me-2" />
+          <strong>{t('query.question')}</strong>
         </div>
         
         {isStreaming && (
-          <Badge bg="info" className="d-flex align-items-center p-2">
+          <div className="d-flex align-items-center">
             <Spinner animation="border" size="sm" className="me-2" />
-            {t('query.streaming')}
-          </Badge>
+            <span>{t('query.generating')}</span>
+          </div>
         )}
       </Card.Header>
       
       <Card.Body>
-        {/* Soru */}
-        <div className="query-question mb-4">
-          <p className="lead">{query}</p>
+        {/* Query */}
+        <div className="query-text mb-3">
+          <p>{query}</p>
         </div>
         
-        {/* Hata mesajı */}
+        {/* Error */}
         {error && (
-          <Alert variant="danger">
+          <Alert variant="danger" className="mb-3">
             <Alert.Heading>{t('query.error')}</Alert.Heading>
             <p>{error}</p>
             <div className="d-flex justify-content-end">
-              <Button 
-                variant="outline-danger" 
+              <Button
+                variant="outline-danger"
                 size="sm"
                 onClick={handleRetry}
               >
-                <FaSync className="me-1" /> {t('common.tryAgain')}
+                <FaSyncAlt className="me-2" />
+                {t('query.retry')}
               </Button>
             </div>
           </Alert>
         )}
         
-        {/* Yanıt yanıtı */}
+        {/* Answer */}
         {(answer || isStreaming) && (
-          <div className="query-answer mb-4">
-            <Card.Subtitle className="mb-3 d-flex align-items-center">
-              <FaInfoCircle className="text-primary me-2" />
-              {t('query.answer')}
+          <div className="answer-container">
+            <div className="answer-header d-flex justify-content-between align-items-center mb-2">
+              <h5>
+                <FaInfoCircle className="me-2" />
+                {t('query.answer')}
+              </h5>
               
-              {isStreaming && (
-                <Spinner animation="border" size="sm" className="ms-2" />
-              )}
-            </Card.Subtitle>
+              <Button
+                variant="outline-secondary"
+                size="sm"
+                onClick={handleCopyClick}
+                disabled={!answer || isStreaming}
+              >
+                <FaRegCopy className="me-2" />
+                {t('query.copy')}
+              </Button>
+            </div>
             
+            {/* Answer content with source highlighting */}
             <div 
-              className={`answer-content ${activeSourceId ? `highlight-source-${activeSourceId}` : ''}`}
-              dangerouslySetInnerHTML={{ __html: processStreamingAnswer() }}
-            />
+              className={`answer-content ${currentSourceId ? `highlight-source-${currentSourceId}` : ''}`}
+              ref={resultRef}
+            >
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkBreaks]}
+                rehypePlugins={[rehypeHighlight]}
+              >
+                {answer || ' '}
+              </ReactMarkdown>
+              
+              {/* Blinking cursor when streaming */}
+              {isStreaming && <span className="cursor-blink">▌</span>}
+            </div>
             
-            {/* Kaynak göstergesi */}
-            {activeSourceId && sourceMap[activeSourceId] && (
-              <div className="source-indicator mt-3">
-                <div className="small text-muted">
-                  {t('query.currentSource')}:
-                  <Badge bg="light" text="dark" className="ms-2">
-                    {sourceMap[activeSourceId].title}
-                    {sourceMap[activeSourceId].page_number && ` (${t('query.page')} ${sourceMap[activeSourceId].page_number})`}
-                  </Badge>
-                </div>
+            {/* Current source indicator */}
+            {currentSourceId && sourceMap[currentSourceId] && (
+              <div className={`current-source-indicator ${sourceMap[currentSourceId].color || ''}`}>
+                <small>
+                  {t('query.currentSource')}: {sourceMap[currentSourceId].title}
+                  {sourceMap[currentSourceId].page && ` (${t('query.page')} ${sourceMap[currentSourceId].page})`}
+                </small>
               </div>
             )}
             
-            {/* Aktif referanslar */}
-            {currentReferences.length > 0 && (
-              <div className="current-references mt-3">
-                <div className="small">
-                  {t('query.references')}:
-                  {currentReferences.map((refId, index) => (
-                    sourceMap[refId] && (
-                      <Badge 
-                        key={refId}
-                        bg="light" 
-                        text="dark"
-                        className="ms-2 mb-1 p-2"
-                        onClick={() => onViewDocument && onViewDocument(sourceMap[refId].document_id)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <span className={sourceColorClasses[parseInt(refId) % sourceColorClasses.length]}>
-                          [{refId}]
-                        </span>
-                        {' '}
-                        {sourceMap[refId].title}
-                        {sourceMap[refId].page_number && ` (${t('query.page')} ${sourceMap[refId].page_number})`}
-                      </Badge>
-                    )
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {/* Streaming durumu */}
-            {isStreaming && (
-              <div className="streaming-status mt-3">
-                <div className="d-flex align-items-center small text-muted">
-                  <Spinner animation="grow" size="sm" variant="primary" className="me-2" />
-                  {socketConnected ? t('query.generatingResponse') : t('query.connecting')}
+            {/* References */}
+            {references.length > 0 && (
+              <div className="references-container mt-3">
+                <small className="text-muted">{t('query.references')}:</small>
+                <div className="d-flex flex-wrap gap-2 mt-2">
+                  {references.map(sourceId => renderSourceBadge(sourceId))}
                 </div>
               </div>
             )}
           </div>
         )}
       </Card.Body>
+      
+      {/* Loading indicator */}
+      {isStreaming && (
+        <Card.Footer className="text-center">
+          <Spinner animation="grow" size="sm" className="me-2" />
+          <small className="text-muted">{t('query.thinkingAndWriting')}</small>
+        </Card.Footer>
+      )}
     </Card>
   );
 };
